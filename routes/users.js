@@ -52,31 +52,32 @@ const authUser = asyncHandler(async(req,res)=>{
   console.log(req.body);
   
     const authSql = 'select user_id,user_password,user_email,role_id from login where user_id=? '
-
-    const user = await new Promise((resolve,reject)=>{
-      db.query(authSql,[userid],(err,result)=>{
-        if (err) reject (err)
-          resolve(result[0])
+    try {
+      const user = await new Promise((resolve,reject)=>{
+        db.query(authSql,[userid],(err,result)=>{
+          if (err) reject (err)
+            resolve(result[0])
+        })
       })
-    })
-    console.log(user);
-    
-    const matchPassword = await bcrypt.compare(password,user.user_password)
-    const token = generateToken(res,user.user_id)
-  
-    
-    if (user && matchPassword) {
+      
+      const matchPassword = await bcrypt.compare(password,user.user_password)
+
+      if (!user | !matchPassword) {
+        res.status(401)
+        throw new Error("Invalid credentials");
+        
+      }
+       generateToken(res,user.user_id)
       res.json({
         message:'Authentication Successfull',
         id:user.user_id,
         email:user.user_email,
-        role:user.role_id
+        role:user.role_id,
       })
-    }else{
-      res.status(401)
-      throw new Error("Invalid email or password");
-      
+    } catch (error) {
+      res.status(500).json({message:'Authentication Failed'})
     }
+    
 
 })
 
@@ -113,47 +114,44 @@ const getUser = asyncHandler(async(req,res)=>{
 // @desc Get user profile   
 // @route POST /api/users/auth
 // @access Public
-const updateUser = asyncHandler(async(req,res)=>{  
-  
-  const {email,password,userid} =req.body
-  
+const updateUser = asyncHandler(async(req,res)=>{    
+  const {email,password,userid} =req.body  
   const userId=req.user.id
-  const getSql = "select user_id,user_email,user_password from login where user_id=?"
-    db.query(getSql,[userId],async(err,result)=>{
-      if (err) {        
-        res.status(500)
-        throw new Error("Database Error");        
-      }
-      
-      if (result.length===0) {
-        res.status(404)
-        throw new Error("User not found");        
-      }
+  try {
+    const getSql = "select user_id,user_email,user_password from login where user_id=?"
+    const result = await new Promise((resolve, reject) => {
+      db.query(getSql,[userId],(err,result)=>{
+        if (err) reject(err);
+        resolve(result)
+      })
+    })
+    if (result.length ===0) {
+      return res.status(404).json({message:'User not found'})
+    }
     const user=result[0]
-    
     const updatedUserId = userid || user.user_id;
     const updatedEmail = email || user.user_email;
     const updatedPassword = password || user.user_password
     const updatedDate = new Date().toISOString().replace('T', ' ').split('.')[0];
-
     let updatedUserPassword = updatedPassword;
     if (password) {
       const salt = await bcrypt.genSalt(10);
       updatedUserPassword = await bcrypt.hash(updatedPassword, salt);
     }
-    
-    const updateSql = "UPDATE login SET user_email = ?, user_id = ?, user_password = ?,updated_timestamp= ? WHERE user_id = ?";
 
-    db.query(updateSql,[updatedEmail,updatedUserId,updatedUserPassword,updatedDate,userId],(err,result)=>{
-      if (err) {
-        
-        res.status(500)
-        throw new Error("Error updating user data");
-        
-      }
-      res.status(201).json({message:'user updated successfully'})
+    const updateSql = "UPDATE login SET user_email = ?, user_id = ?, user_password = ?,updated_timestamp= ? WHERE user_id = ?";
+  
+    await new Promise ((resolve,reject)=>{
+      db.query(updateSql,[updatedEmail,updatedUserId,updatedUserPassword,updatedDate,userId],(err,result)=>{
+        if (err) reject(err)
+        resolve(result)
+      })
+
     })
-    })
+    res.status(200).json({message:'User updated Successfully'})
+  } catch (err) {
+    res.status(500).json({message:'Error updating user data'})
+  }
   
   
 })

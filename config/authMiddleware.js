@@ -3,6 +3,8 @@ const asyncHandler = require('express-async-handler');
 const db = require('./db');
 
 const protect = asyncHandler(async(req,res,next)=>{
+    console.log(req.cookies);
+    
     
     let token;
 
@@ -15,7 +17,6 @@ const protect = asyncHandler(async(req,res,next)=>{
     try {
         const decoded = jwt.verify(token,process.env.JWT_SECRET)
         
-
         const getUserSql = 'select user_id,user_email,role_id from login where user_id=?'
         db.query(getUserSql,[decoded.userId],(err,result)=>{
             if (err) {
