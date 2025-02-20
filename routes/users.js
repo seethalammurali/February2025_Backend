@@ -49,7 +49,7 @@ const registerUser = asyncHandler(async(req,res)=>{
 // @access Public
 const authUser = asyncHandler(async(req,res)=>{  
   const {userid,password} = req.body
-  console.log(req.body);
+  console.log(req.cookies);
   
     const authSql = 'select user_id,user_password,user_email,role_id from login where user_id=? '
     try {
@@ -68,6 +68,8 @@ const authUser = asyncHandler(async(req,res)=>{
         
       }
        generateToken(res,user.user_id)
+       console.log(user);
+       
       res.json({
         message:'Authentication Successfull',
         id:user.user_id,
@@ -97,6 +99,8 @@ const logoutUser = ((req,res)=>{
 // @route POST /api/users/auth
 // @access Public
 const getUser = asyncHandler(async(req,res)=>{
+  console.log('step 5',req.cookies);
+  
     
   if (req.user) {
     res.json({
