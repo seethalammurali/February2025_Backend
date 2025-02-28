@@ -8,10 +8,10 @@ const dotenv = require('dotenv')
 const {notFound,errorHandler} = require('./middleware/errorMiddleware')
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
-const customerRouter = require('./routes/customers')
+const distributorRouter = require('./routes/distributor')
 const bodyParser = require('body-parser');
+const fileUpload = require('express-fileupload')
 const app = express();
-
 dotenv.config()
 
 const corsOptions={
@@ -25,7 +25,7 @@ app.use(cors(corsOptions))
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
-
+app.use(fileUpload())
 app.use(logger('dev'));
 app.use(bodyParser.json())
 app.use(express.json());
@@ -35,7 +35,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', indexRouter);
 app.use('/api/users', usersRouter);
-app.use('/api/customers', customerRouter);
+app.use('/api/customers', distributorRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
