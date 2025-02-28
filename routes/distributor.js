@@ -10,6 +10,8 @@ const path = require('path')
 const {uploadDir} =require('../config/uploads')
 const {s3,S3_BUCKET} = require('../config/aws3');
 const { ifError } = require("assert");
+const {PutObjectCommand} = require('@aws-sdk/client-s3');
+ 
 // @desc Get user profile
 // @route POST /api/users/auth
 // @access Public
@@ -44,16 +46,27 @@ const createDistributor = asyncHandler(async (req, res) => {
   }
   
   const uploadToS3 = async (file) => {
-    const uploadParams = {
-      Bucket:S3_BUCKET,
-      Key:`uploads/${Date.now()}_${file.name}`,
-      Body:file.data,
-      ContentType:file.miemtype,
-      ACL:'public-read'
+    try {
+      
+      const uploadParams = {
+        Bucket:S3_BUCKET,
+        Key:`uploads/${Date.now()}_${file.name}`,
+        Body:file.data,
+        ContentType:file.miemtype,
+        // ACL:'public-read'
+      }
+  
+      const command = new PutObjectCommand(uploadParams)
+  
+      const result = await s3.send(command)
+      console.log("AWS",result);
+      
+      return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`
+    } catch (err) {
+      console.log('Error uploading to s3',err);
+      throw err
+      
     }
-
-    const result = await s3.upload(uploadParams).promise()
-    return result.Location
   }
 
   if(files.aadharUrl) aadharUrl= await uploadToS3(files.aadharUrl);
@@ -177,6 +190,13 @@ const getDistributor = asyncHandler(async (req, res) => {
 const updateDistributor = asyncHandler(async (req, res) => {
   res.status(201).json({ message: "Customer updated successfully" });
 });
+// @desc Get user profile
+// @route POST /api/users/auth
+// @access Public
+
+const approveDistributor = asyncHandler(async (req, res) => {
+  res.status(201).json({ message: "Customer updated successfully" });
+});
 
 // @desc Get user profile
 // @route POST /api/users/auth
@@ -202,4 +222,7 @@ router.get("/profile", protect, getDistributor);
 router.post("/profile/id", protect, getDistributorDetails);
 router.post("/register", protect, createDistributor);
 router.put("/profile", protect, updateDistributor);
+router.post("/approve", protect, approveDistributor);
+
+
 module.exports = router;
