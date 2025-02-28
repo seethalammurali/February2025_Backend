@@ -3,7 +3,6 @@ const asyncHandler = require('express-async-handler');
 const db = require('./db');
 
 const protect = asyncHandler(async(req,res,next)=>{
-    console.log('cookie',req);
     
     
     let token;
