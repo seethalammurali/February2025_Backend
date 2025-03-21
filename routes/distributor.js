@@ -12,9 +12,9 @@ const {s3,S3_BUCKET} = require('../config/aws3');
 const { ifError } = require("assert");
 const {PutObjectCommand} = require('@aws-sdk/client-s3');
  
-// @desc Get user profile
+// @desc create distributor profile
 // @route POST /api/users/auth
-// @access Public
+// @access Private
 
 const createDistributor = asyncHandler(async (req, res) => {
   const {
@@ -121,7 +121,7 @@ const createDistributor = asyncHandler(async (req, res) => {
   
   if (customerExist) {
     res.status(400);
-    throw new Error("Distributor or Retailer already exists");
+    throw new Error("Aadhar or Mobile number already exists");
   }
   const createUserSql =
     "INSERT INTO distributor ( distributor_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,distributor_margin,created_timestamp,updated_timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
@@ -332,16 +332,51 @@ const getDistributorDetails = asyncHandler(async (req, res) => {
         resolve(result)
     })
   })
+
   if (distributor) {
     res.status(201).json(distributor)
   }
 });
+
+const updateDistributorMargin = asyncHandler(async(req,res)=>{
+  const {id,margin}=req.body
+
+  try {
+    if (margin===undefined) {
+      res.status(400).json({error:'Margin is required'})
+    }
+
+    let updateDistributorMarginSql = 'update distributor set distributor_margin=?'
+    let param = [margin]
+
+    if (id) {
+      updateDistributorMarginSql+=" where distributor_id=?"
+    }
+    console.log(param);
+    
+
+    await new Promise((resolve,reject)=>{
+      db.query(updateDistributorMarginSql,[param,id],(err,result)=>{
+        if(err) reject(err)
+          resolve(result)
+      })
+    })
+
+    res.status(201).json({message:'Margin Updated successfully'})
+    
+    
+  } catch (err) {
+    res.status(500).json({message:'Internal server error',err})
+  }
+
+})
 
 router.get("/profile", protect, getDistributor);
 router.post("/profile/id", protect, getDistributorDetails);
 router.post("/register", protect, createDistributor);
 router.put("/profile", protect, updateDistributor);
 router.post("/approve", protect, approveDistributor);
+router.put("/update", protect, updateDistributorMargin);
 
 
 module.exports = router;
