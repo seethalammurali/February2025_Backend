@@ -45,7 +45,7 @@ const createRetailer = asyncHandler(async (req, res) => {
       IFSC,
       accountName,
       doj,
-      ditributorMargin,
+      retailerPercentage,
     } = req.body;
     console.log(req.body);
   
@@ -119,7 +119,7 @@ const createRetailer = asyncHandler(async (req, res) => {
       throw new Error("Aadhar or Mobile number already exists");
     }
     const createUserSql =
-      "INSERT INTO retailer ( distributor_id,retailer_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,distributor_margin,created_timestamp,updated_timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+      "INSERT INTO retailer ( distributor_id,retailer_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,retailer_percentage,created_timestamp,updated_timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
   
      function generateUserId(userType,mobile) {
       return new Promise((resolve, reject) => {
@@ -191,7 +191,7 @@ const createRetailer = asyncHandler(async (req, res) => {
           formattedDate(doj),
           status,
           comments,
-          ditributorMargin,
+          retailerPercentage,
           formattedDate(create),
           formattedDate(update),
         ],
