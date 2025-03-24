@@ -49,7 +49,8 @@ const registerUser = asyncHandler(async(req,res)=>{
 // @access Public
 const authUser = asyncHandler(async(req,res)=>{  
   const {userid,password} = req.body
-  console.log(req.cookies);
+  // console.log(req.body);
+  
   
     const authSql = 'select user_id,user_password,user_email,Role from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
     try {
@@ -62,13 +63,21 @@ const authUser = asyncHandler(async(req,res)=>{
       
       const matchPassword = await bcrypt.compare(password,user.user_password)
 
-      if (!user | !matchPassword) {
+      if (!user || !matchPassword) {
         res.status(401)
         throw new Error("Invalid credentials");
         
       }
-       generateToken(res,user.user_id)
-       console.log(user);
+      const token = generateToken(res,user.user_id)
+
+       await new Promise((resolve, reject) => {
+        const singleSessionSql = 'update login set session_token=? where user_id=?'
+        db.query(singleSessionSql,[token,userid],(err,result)=>{
+          if (err) reject(err)
+          resolve(result)
+        })
+       })
+       
        
       res.json({
         message:'Authentication Successfull',
@@ -76,7 +85,8 @@ const authUser = asyncHandler(async(req,res)=>{
         email:user.user_email,
         role:user.Role,
       })
-    } catch (error) {
+    } catch (err) {
+      console.log(err);      
       res.status(500).json({message:'Authentication Failed'})
     }
     

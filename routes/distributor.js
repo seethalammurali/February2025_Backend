@@ -4,12 +4,9 @@ const asyncHandler = require("express-async-handler");
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const protect = require("../config/authMiddleware");
-const generateToken = require("../config/generateToken");
-const fs=require('fs')
 const path = require('path')
 const {uploadDir} =require('../config/uploads')
 const {s3,S3_BUCKET} = require('../config/aws3');
-const { ifError } = require("assert");
 const {PutObjectCommand} = require('@aws-sdk/client-s3');
  
 // @desc create distributor profile
@@ -108,16 +105,16 @@ const createDistributor = asyncHandler(async (req, res) => {
   if(files.shopImageUrl) shopImageUrl= await uploadToS3(files.shopImageUrl);
   if(files.cancelledCheckUrl) cancelledCheckUrl= await uploadToS3(files.cancelledCheckUrl);
   const findCustomerSql =
-    "select user_mobile,aadhar_number from distributor where user_mobile=? and aadhar_number=?";
+    "select user_mobile,aadhar_number from distributor where user_mobile=? or aadhar_number=?";
   const customerExist = await new Promise((resolve, reject) => {
     db.query(findCustomerSql, [mobile, aadharNumber], (err, result) => {
       if (err) reject(err);
+      console.log("step 10",result);
       resolve(result.length>0);
-      console.log(result);
       
     });
   });
-  console.log(customerExist);
+  console.log("step 11",customerExist);
   
   if (customerExist) {
     res.status(400);
@@ -217,7 +214,7 @@ if (distributorExist) {
         res
           .status(201)
           .json({
-            message: "User registered Successfully",
+            message: "Distributor registered Successfully",
             userId: distributorId,
           });
       }
@@ -229,9 +226,9 @@ if (distributorExist) {
 // @access Public
 
 const getDistributor = asyncHandler(async (req, res) => {
-  const findCustomerSql = "select * from distributor";
+  const findDistributorSql = "select * from distributor";
   const user = await new Promise((resolve, reject) => {
-    db.query(findCustomerSql, (err, result) => {
+    db.query(findDistributorSql, (err, result) => {
       if (err) reject(err);
       resolve(result);
     });
