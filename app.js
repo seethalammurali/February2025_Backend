@@ -9,6 +9,7 @@ const {notFound,errorHandler} = require('./middleware/errorMiddleware')
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const distributorRouter = require('./routes/distributor')
+const retailerRouter = require('./routes/retailer')
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload')
 const app = express();
@@ -35,7 +36,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', indexRouter);
 app.use('/api/users', usersRouter);
-app.use('/api/customers', distributorRouter);
+app.use('/api/distributor', distributorRouter);
+app.use('/api/retailer', retailerRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
