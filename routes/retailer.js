@@ -383,27 +383,125 @@ const updateRetailer = asyncHandler(async(req,res)=>{
   }
 })
 
+const approveRetailer = asyncHandler(async (req, res) => {
+  console.log(req.body);
+  
+  const {retailer,status,create,update} = req.body 
+  const password = process.env.RETAILER_PSWD
+  const retailerExistSql = 'select role_id,retailer_id,user_mobile,user_email,kyc_status from retailer where retailer_id=?'
+  try {
+    
+    const retailerExist = await new Promise((resolve, reject) => {
+      db.query(retailerExistSql,[retailer],(err,result)=>{
+        if(err) reject(err)
+          resolve(result)
+      })
+    })
+    const salt = await bcrypt.genSalt(10)
+    const hashedPassword = await bcrypt.hash(password,salt)
+    let updateSql
+    let updateParams
+  
+    if (retailerExist.length===0) {
+      return res.status(404).json({message:"Retailer not found"})
+    }
+    
+    const {role_id,retailer_id,user_mobile,user_email} = retailerExist[0]
+
+    if (status==='Approve') {
+      // update retailer status
+      updateSql ='update retailer set kyc_status=? , user_password=? where retailer_id=?'
+      updateParams=[status,hashedPassword,retailer]
+      await new Promise((resolve, reject) => {
+        db.query(updateSql,updateParams,(err,result)=>{
+          if(err) reject(err)
+            resolve(result)
+        })
+      })
+
+      // create retailer login
+      insertSql = 'INSERT INTO login (role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?)'
+      insertParams=[role_id,retailer_id,hashedPassword,user_mobile,user_email,formattedDate(create),formattedDate(update)]
+
+      await new Promise((resolve, reject) => {
+        db.query(insertSql,insertParams,(err,result)=>{
+          if(err) reject(err)
+            resolve(result)
+        })
+      })
+      res.status(201).json({ message: "Retailer approved successfully" });
+    } else if (status==='Reject') {
+      updateSql ='update retailer set kyc_status=? where retailer_id=?'
+      updateParams=[status,retailer]
+      
+      await new Promise((resolve, reject) => {
+        db.query(updateSql,updateParams,(err,result)=>{
+          if(err) reject(err)
+            resolve(result)
+        })
+      })
+      res.status(200).json({message:'Retailer Rejected'})
+    } else{
+      return res.status(400).json({message:'Inavalid status provided'})
+    }    
+  } catch (err) {
+    res.status(500).json({message:'Internal server error',err})
+  }
+});
+
 const getRetailerDetails = asyncHandler(async (req, res) => {
     const {retailerId} = req.body
     console.log(req.body);
     
     const getRetailerDetailsSql ='select * from retailer where retailer_id=?'
-    const distributor = await new Promise((resolve,reject)=>{
+    const retailer = await new Promise((resolve,reject)=>{
       db.query(getRetailerDetailsSql,[retailerId],(err,result)=>{
         if(err) reject(err)
           resolve(result)
       })
     })
   
-    if (distributor) {
-      res.status(201).json(distributor)
+    if (retailer) {
+      res.status(201).json(retailer)
     }
   });
 
+const updateRetailerPencentage = asyncHandler(async(req,res)=>{
+  const {id,margin}=req.body
 
+  try {
+    if (margin===undefined) {
+      res.status(400).json({error:'Margin is required'})
+    }
+
+    let updateRetailerPercentageSql = 'update retailer set retailer_percentage=?'
+    let param = [margin]
+
+    if (id) {
+      updateRetailerPercentageSql+=" where retailer_id=?"
+    }
+    
+
+    await new Promise((resolve,reject)=>{
+      db.query(updateRetailerPercentageSql,[param,id],(err,result)=>{
+        if(err) reject(err)
+          resolve(result)
+      })
+    })
+
+    res.status(201).json({message:'Margin Updated successfully'})
+    
+    
+  } catch (err) {
+    res.status(500).json({message:'Internal server error',err})
+  }
+
+})
 router.get('/profile',protect,getRetailer)
 router.post('/profile/id',protect,getRetailerDetails)
 router.post('/register',protect,createRetailer)
 router.put('/profile',protect,updateRetailer)
+router.post('/approve',protect,approveRetailer)
+router.put('/update',protect,updateRetailerPencentage)
 
 module.exports=router

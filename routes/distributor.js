@@ -38,14 +38,14 @@ const uploadToS3 = async (file,userType,mobile) => {
       Key:`TheQuickPayMe/${filePath}`,
       Body:file.data,
       ContentType:file.mimetype,
-      // ACL:'public-read'
+      ACL:'public-read'
     }
 
     const command = new PutObjectCommand(uploadParams)
 
     const result = await s3.send(command)
     
-    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath}`
+    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/TheQuickPayMe/${filePath}`
   } catch (err) {
     console.log('Error uploading to s3',err);
     throw err
@@ -243,7 +243,6 @@ const getDistributor = asyncHandler(async (req, res) => {
 // @access Public
 
 const updateDistributor = asyncHandler(async (req, res) => {
-  
 
   try {
     const {
@@ -282,7 +281,7 @@ const updateDistributor = asyncHandler(async (req, res) => {
       doj,
       ditributorMargin
     } = req.body
-    console.log("step 10",req.files);
+    console.log("step 10",req.body);
   
     let files = req.files || {}
   
@@ -356,8 +355,8 @@ const updateDistributor = asyncHandler(async (req, res) => {
         password,
         uploadFiles.aadharUrl,
         panNumber,
-        panName,
         uploadFiles.panUrl,
+        panName,
         businessName,
         businessCategory,
         businessAddress,
@@ -370,17 +369,16 @@ const updateDistributor = asyncHandler(async (req, res) => {
         uploadFiles.labourLicenseUrl,
         bankName,
         accountNumber,
+        uploadFiles.cancelledCheckUrl,
         IFSC,
         accountName,
-        uploadFiles.cancelledCheckUrl,
         formattedDate(doj),
         status,
         comments,
         ditributorMargin,
         formattedDate(update),
         ID],(err,result)=>{
-          // if(err) reject(err)
-          //   resolve(result)
+          
           if (err) {
             console.log('Error in updating distributor',err);
             res.status(500).json({message:'Database update failed'})
@@ -427,7 +425,7 @@ const approveDistributor = asyncHandler(async (req, res) => {
     
     const {role_id,distributor_id,user_mobile,user_email} = distributorExist[0]
 
-    if (status==='Approved') {
+    if (status==='Approve') {
       // update distributor status
       updateSql ='update distributor set kyc_status=? , user_password=? where distributor_id=?'
       updateParams=[status,hashedPassword,distributor]
@@ -437,11 +435,10 @@ const approveDistributor = asyncHandler(async (req, res) => {
             resolve(result)
         })
       })
-      console.log("distributor details",distributorExist.role_id,distributor_id,user_mobile,user_email);
 
       // create distributor login
       insertSql = 'INSERT INTO login (role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?)'
-      insertParams=[role_id,distributor_id,hashedPassword,user_mobile,user_email,create,update]
+      insertParams=[role_id,distributor_id,hashedPassword,user_mobile,user_email,formattedDate(create),formattedDate(update)]
 
       await new Promise((resolve, reject) => {
         db.query(insertSql,insertParams,(err,result)=>{
@@ -450,7 +447,7 @@ const approveDistributor = asyncHandler(async (req, res) => {
         })
       })
       res.status(201).json({ message: "Distributor approved successfully" });
-    } else if (status==='Rejected') {
+    } else if (status==='Reject') {
       updateSql ='update distributor set kyc_status=? where distributor_id=?'
       updateParams=[status,distributor]
       
@@ -475,7 +472,6 @@ const approveDistributor = asyncHandler(async (req, res) => {
 
 const getDistributorDetails = asyncHandler(async (req, res) => {
   const {ditributorId} = req.body
-  console.log(req.body);
   
   const getDistributorDetailsSql ='select * from distributor where distributor_id=?'
   const distributor = await new Promise((resolve,reject)=>{
@@ -504,7 +500,6 @@ const updateDistributorMargin = asyncHandler(async(req,res)=>{
     if (id) {
       updateDistributorMarginSql+=" where distributor_id=?"
     }
-    console.log(param);
     
 
     await new Promise((resolve,reject)=>{
