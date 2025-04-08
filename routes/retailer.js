@@ -35,14 +35,14 @@ const uploadToS3 = async (file,userType,mobile) => {
       Key:`TheQuickPayMe/${filePath}`,
       Body:file.data,
       ContentType:file.miemtype,
-      // ACL:'public-read'
+      ACL:'public-read'
     }
 
     const command = new PutObjectCommand(uploadParams)
 
     const result = await s3.send(command)
     
-    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filePath}`
+    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/TheQuickPayMe/${filePath}`
   } catch (err) {
     console.log('Error uploading to s3',err);
     throw err
