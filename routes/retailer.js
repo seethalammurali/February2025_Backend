@@ -58,7 +58,7 @@ function generateUserId(userType,mobile) {
     if (userType === 'retailer') {
       userCode = `QPR${lastFiveDigits}`
     } else{
-      reject(new Error('Invalid user type.Must be retailer'))
+      reject(new Error('Invalid user type. Must be retailer'))
     }
     resolve(userCode)
   })
@@ -215,17 +215,32 @@ const createRetailer = asyncHandler(async (req, res) => {
 
 
 const getRetailer = asyncHandler(async (req, res) => {
-const findRetailerSql = "select * from retailer";
-const user = await new Promise((resolve, reject) => {
-    db.query(findRetailerSql, (err, result) => {
-    if (err) reject(err);
-    resolve(result);
+  const {distributor} = req.body
+  console.log(distributor);
+  
+  let  findRetailerSql = "select * from retailer"
+  let value=[]
+  if (distributor) {
+     findRetailerSql = "select * from retailer where distributor_id=?";
+    value=[distributor]
+  }
+  try {
+    const user = await new Promise((resolve, reject) => {
+        db.query(findRetailerSql,value, (err, result) => {
+        if (err) reject(err);
+        resolve(result);
+        });
     });
-});
-
-if (user) {
-    res.status(201).json(user);
-}
+    
+    if (user.length>0) {
+        res.status(201).json(user);
+    }else{
+      return res.status(400).json({message:'No retailer found'})
+    }
+    
+  } catch (err) {
+    res.status(500).json({message:'Database error',err})
+  }
 });
 
 const updateRetailer = asyncHandler(async(req,res)=>{
@@ -497,7 +512,7 @@ const updateRetailerPencentage = asyncHandler(async(req,res)=>{
   }
 
 })
-router.get('/profile',protect,getRetailer)
+router.post('/profile',protect,getRetailer)
 router.post('/profile/id',protect,getRetailerDetails)
 router.post('/register',protect,createRetailer)
 router.put('/profile',protect,updateRetailer)

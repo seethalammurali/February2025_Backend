@@ -60,8 +60,12 @@ const authUser = asyncHandler(async(req,res)=>{
             resolve(result[0])
         })
       })
+      console.log(user.user_password);
+      
       
       const matchPassword = await bcrypt.compare(password,user.user_password)
+      console.log(matchPassword);
+      
 
       if (!user || !matchPassword) {
         res.status(401)
