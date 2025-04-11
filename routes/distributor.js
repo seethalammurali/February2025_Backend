@@ -60,7 +60,7 @@ function generateUserId(userType,mobile) {
     if (userType === 'distributor') {
       userCode = `QPD${lastFiveDigits}`
     } else{
-      reject(new Error('Invalid user type.Must be distributor'))
+      reject(new Error('Invalid user type. Must be distributor'))
     }
     resolve(userCode)
   })
