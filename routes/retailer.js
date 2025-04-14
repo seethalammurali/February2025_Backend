@@ -282,7 +282,7 @@ const updateRetailer = asyncHandler(async(req,res)=>{
       doj,
       retailerPercentage} = req.body
 
-      console.log('Step 10',req.files);
+      console.log('Step 10',req.body);
 
       let files = req.files ||{}
 
@@ -403,15 +403,21 @@ const approveRetailer = asyncHandler(async (req, res) => {
   
   const {retailer,status,create,update} = req.body 
   const password = process.env.RETAILER_PSWD
+  console.log("step 1",password);
+  
   const retailerExistSql = 'select role_id,retailer_id,user_mobile,user_email,kyc_status from retailer where retailer_id=?'
   try {
     
     const retailerExist = await new Promise((resolve, reject) => {
       db.query(retailerExistSql,[retailer],(err,result)=>{
         if(err) reject(err)
+          console.log("step 2",result);
+          
           resolve(result)
       })
     })
+    console.log('step 3',retailerExist);
+    
     const salt = await bcrypt.genSalt(10)
     const hashedPassword = await bcrypt.hash(password,salt)
     let updateSql

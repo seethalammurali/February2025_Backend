@@ -6,46 +6,41 @@ const bcrypt = require('bcryptjs')
 const protect = require('../config/authMiddleware')
 
 const getDashboard=asyncHandler(async(req,res)=>{
-    const getDashboardSql = `select
- (select count(distributor_id) from distributor)  total_distributor,
- (select count(retailer_id) from retailer)  total_retailer,
- (select count(kyc_status) from retailer where kyc_status='Pending') total_pending;`;
-  const dashboardData = await new Promise((resolve, reject) => {
-    db.query(getDashboardSql, (err, result) => {
-      if (err) reject(err);
-      resolve(result);
-    });
-  });
+  const{distributor} = req.body
+  console.log(req.body);
+  
+    let getDashboardSql = `select
+        (select count(distributor_id) from distributor)  total_distributor,
+        (select count(retailer_id) from retailer)  total_retailer,
+        (select count(kyc_status) from retailer where kyc_status='Pending') total_pending;`;
+    let value = []
 
-  if (dashboardData) {
-    res.status(201).json(dashboardData);
-  }
-// res.json({message:'Dashboard data'})
+    if (distributor) {
+      getDashboardSql = `select 
+        (select count(retailer_id) from retailer where distributor_id='QPD68760')  total_retailer,
+        (select count(kyc_status) from retailer where kyc_status='Pending') total_pending;`;
+       value=[distributor]
+    }
+    try {
+      const dashboardData = await new Promise((resolve, reject) => {
+        db.query(getDashboardSql,value, (err, result) => {
+          if (err) reject(err);
+          
+          resolve(result);
+        });
+      });
+      if (dashboardData.length > 0 ) {
+        res.status(201).json(dashboardData)
+      }else{
+        return res.status(400).json({message:'No Data found'})
+      }
+      
+    } catch (err) {
+      res.status(500).json({message:'Database error',err})
+    }
 })
-const getDistributorDashboard=asyncHandler(async(req,res)=>{
-    const {distributor}=req.body
-    const getDistributorDashboardSql = `select
- (select count(retailer_id) from retailer where distributor_id=? )  total_retailer`;
- try {
-    
- } catch (err) {
-    console.log(err);
-    throw new Error("Internal server error",err);
-    
- }
-  const dashboardData = await new Promise((resolve, reject) => {
-    db.query(getDistributorDashboardSql,[distributor], (err, result) => {
-      if (err) reject(err);
-      resolve(result);
-    });
-  });
 
-  if (dashboardData) {
-    res.status(201).json(dashboardData);
-  }
-})
-router.get('/',protect,getDashboard)
-router.post('/distributor',protect,getDistributorDashboard)
+router.post('/',protect,getDashboard)
 
 
 module.exports=router
