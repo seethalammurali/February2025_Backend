@@ -282,6 +282,7 @@ const updateDistributor = asyncHandler(async (req, res) => {
       ditributorMargin
     } = req.body
     console.log("step 10",req.body);
+    console.log("step 11",req.files);
   
     let files = req.files || {}
   
