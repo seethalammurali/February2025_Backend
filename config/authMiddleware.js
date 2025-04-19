@@ -25,7 +25,6 @@ const protect = asyncHandler(async(req,res,next)=>{
         const user = await new Promise((resolve, reject) => {            
             db.query(getUserSql,[decoded.userId],(err,result)=>{
                 if (err) reject(err)
-                console.log(result);
                 resolve( result[0])            
             })
         })

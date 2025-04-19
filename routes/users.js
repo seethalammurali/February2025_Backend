@@ -49,7 +49,6 @@ const registerUser = asyncHandler(async(req,res)=>{
 // @access Public
 const authUser = asyncHandler(async(req,res)=>{  
   const {userid,password} = req.body
-  // console.log(req.body);
   
   
     const authSql = 'select user_id,user_password,user_email,Role from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
@@ -60,11 +59,9 @@ const authUser = asyncHandler(async(req,res)=>{
             resolve(result[0])
         })
       })
-      console.log(user.user_password);
       
       
       const matchPassword = await bcrypt.compare(password,user.user_password)
-      console.log(matchPassword);
       
 
       if (!user || !matchPassword) {
@@ -113,7 +110,6 @@ const logoutUser = ((req,res)=>{
 // @route POST /api/users/auth
 // @access Public
 const getUser = asyncHandler(async(req,res)=>{
-  console.log('step 5',req.cookies);
   
     
   if (req.user) {
