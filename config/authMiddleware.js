@@ -35,7 +35,7 @@ const protect = asyncHandler(async(req,res,next)=>{
             
         }
         if (user.session_token !==token || !user.session_token) {
-            return res.status(401).json({message:'Session expired.Logged in from another device.',actionRequired:true})
+            return res.status(401).json({message:'You are logged in on another device.',actionRequired:true})
         }
         req.user = {
             id: user.user_id,
