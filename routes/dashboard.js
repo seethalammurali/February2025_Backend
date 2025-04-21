@@ -17,8 +17,10 @@ const getDashboard=asyncHandler(async(req,res)=>{
 
     if (distributor) {
       getDashboardSql = `select 
-        (select count(retailer_id) from retailer where distributor_id='QPD68760')  total_retailer,
-        (select count(kyc_status) from retailer where kyc_status='Pending') total_pending;`;
+    count(*) as total_retailer,
+    count(case when kyc_status = 'Pending' then 1 end) as total_pending
+from retailer
+where distributor_id = ?;`;
        value=[distributor]
     }
     try {
