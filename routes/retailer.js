@@ -34,7 +34,7 @@ const uploadToS3 = async (file,userType,mobile) => {
       Bucket:S3_BUCKET,
       Key:`TheQuickPayMe/${filePath}`,
       Body:file.data,
-      ContentType:file.miemtype,
+      ContentType:file.mimetype,
       ACL:'public-read'
     }
 
