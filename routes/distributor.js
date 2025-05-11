@@ -8,6 +8,7 @@ const path = require('path')
 const {uploadDir} =require('../config/uploads')
 const {s3,S3_BUCKET} = require('../config/aws3');
 const {PutObjectCommand} = require('@aws-sdk/client-s3');
+const {encrypt,decrypt} = require('../middleware/encryption')
  
 const formattedDate =(value)=>{
   const date = new Date(value)
@@ -65,6 +66,16 @@ function generateUserId(userType,mobile) {
     resolve(userCode)
   })
 }
+
+function isEncrypted(value) {
+  return (
+    typeof value === "string" &&
+    value.includes(":") &&
+    value.split(":").length === 2 &&
+    /^[0-9a-fA-F]+$/.test(value.split(":")[0])
+  );
+}
+
 
 // @desc create distributor profile
 // @route POST /api/users/auth
@@ -163,7 +174,7 @@ if (distributorExist) {
         distributorId,
         roleid,
         userType,
-        aadharName,
+        encrypt(aadharName),
         aadharNumber,
         formattedDate(dob),
         gender,
@@ -227,16 +238,40 @@ if (distributorExist) {
 
 const getDistributor = asyncHandler(async (req, res) => {
   const findDistributorSql = "select * from distributor";
-  const user = await new Promise((resolve, reject) => {
-    db.query(findDistributorSql, (err, result) => {
-      if (err) reject(err);
-      resolve(result);
+  try {
+    const user = await new Promise((resolve, reject) => {
+      db.query(findDistributorSql, (err, result) => {
+        if (err) reject(err);
+        resolve(result);
+      });
     });
-  });
-
-  if (user) {
-    res.status(201).json(user);
+    const decryptedData = user.map((item)=>{
+      console.log(item);
+      
+        const decryptedUser = {...item}
+  
+        for(const key in decryptedUser){
+          if (isEncrypted(decryptedUser[key])) {
+            try {
+              decryptedUser[key]= decrypt(decryptedUser[key])
+            } catch (err) {
+              console.warn(`Decryption failed for key  ${key}`);
+              
+            }
+          }
+        }
+        return decryptedUser
+    })
+    res.status(201).json(decryptedData)
+  } catch (err) {
+    console.log("step 2",err);
+    
+    res.status(500).json({message:'Failed to fetch disributor'})
   }
+
+  // if (user) {
+  //   res.status(201).json(user);
+  // }
 });
 // @desc Get user profile
 // @route POST /api/users/auth
@@ -475,16 +510,40 @@ const getDistributorDetails = asyncHandler(async (req, res) => {
   const {ditributorId} = req.body
   
   const getDistributorDetailsSql ='select * from distributor where distributor_id=?'
-  const distributor = await new Promise((resolve,reject)=>{
-    db.query(getDistributorDetailsSql,[ditributorId],(err,result)=>{
-      if(err) reject(err)
-        resolve(result)
+  try {
+    const distributor = await new Promise((resolve,reject)=>{
+      db.query(getDistributorDetailsSql,[ditributorId],(err,result)=>{
+        if(err) reject(err)
+          resolve(result)
+      })
     })
-  })
-
-  if (distributor) {
-    res.status(201).json(distributor)
+    const decryptedData = distributor.map((item)=>{
+      console.log(item);
+      
+        const decryptedUser = {...item}
+  
+        for(const key in decryptedUser){
+          if (isEncrypted(decryptedUser[key])) {
+            try {
+              decryptedUser[key]= decrypt(decryptedUser[key])
+            } catch (err) {
+              console.warn(`Decryption failed for key  ${key}`);
+              
+            }
+          }
+        }
+        return decryptedUser
+    })
+    res.status(201).json(decryptedData)
+    
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({message:'Failed to Fetch distributor'})
   }
+
+  // if (distributor) {
+  //   res.status(201).json(distributor)
+  // }
 });
 
 const updateDistributorMargin = asyncHandler(async(req,res)=>{
