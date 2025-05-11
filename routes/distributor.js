@@ -246,7 +246,6 @@ const getDistributor = asyncHandler(async (req, res) => {
       });
     });
     const decryptedData = user.map((item)=>{
-      console.log(item);
       
         const decryptedUser = {...item}
   
@@ -264,7 +263,6 @@ const getDistributor = asyncHandler(async (req, res) => {
     })
     res.status(201).json(decryptedData)
   } catch (err) {
-    console.log("step 2",err);
     
     res.status(500).json({message:'Failed to fetch disributor'})
   }
