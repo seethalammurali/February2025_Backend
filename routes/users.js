@@ -5,6 +5,7 @@ const db = require('../config/db')
 const bcrypt = require('bcryptjs')
 const protect = require('../config/authMiddleware')
 const generateToken = require('../config/generateToken')
+const {encrypt} = require('../middleware/encryption')
 /* GET users listing. */
 
 // @desc Register a new user  
@@ -31,9 +32,10 @@ const registerUser = asyncHandler(async(req,res)=>{
   const hashedPassword = await bcrypt.hash(password,salt)
   const createUserSql = "INSERT INTO login (ID,role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?,?)"
   await new Promise((resolve,reject)=>{
-    db.query(createUserSql,[id,role,userid,hashedPassword,mobile,email,create,update],(err,result)=>{
+    db.query(createUserSql,[id,role,userid,hashedPassword,encrypt(mobile),email,create,update],(err,result)=>{
       if (err) {
         res.status(400)
+        console.log(err);
         
         throw new Error("Inavlid User Data");
       }
@@ -48,10 +50,10 @@ const registerUser = asyncHandler(async(req,res)=>{
 // @route POST /api/users/auth
 // @access Public
 const authUser = asyncHandler(async(req,res)=>{  
-  const {userid,password} = req.body
+  const {userid,password,geoLocation} = req.body
   
   
-    const authSql = 'select user_id,user_password,user_email,Role from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
+    const authSql = 'select user_id,user_password,user_email,Role,terms_accepted from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
     try {
       const user = await new Promise((resolve,reject)=>{
         db.query(authSql,[userid],(err,result)=>{
@@ -78,6 +80,17 @@ const authUser = asyncHandler(async(req,res)=>{
           resolve(result)
         })
        })
+
+       if (geoLocation && geoLocation.latitude && geoLocation.longitude ) {
+        await new Promise((resolve, reject) => {
+          const auditSql = `insert into login_audit (user_id,latitude,longitude) values(?,?,?)`
+
+          db.query(auditSql,[userid,geoLocation.latitude,geoLocation.longitude],(err,result)=>{
+            if (err) return reject(err)
+              resolve(result) 
+          })
+        })
+       }
        
        
       res.json({
@@ -85,6 +98,7 @@ const authUser = asyncHandler(async(req,res)=>{
         id:user.user_id,
         email:user.user_email,
         role:user.Role,
+        termsAccepted:user.terms_accepted
       })
     } catch (err) {
       console.log(err);      
@@ -170,11 +184,27 @@ const updateUser = asyncHandler(async(req,res)=>{
   
 })
 
+const acceptTerms = asyncHandler(async(req,res)=>{
+  console.log(req.user);
+  
+  const userId = req.user.id
+
+  const sql = `update login set terms_accepted =true where user_id =?`
+
+  db.query(sql,[userId],(err,result)=>{
+    console.log(err);
+    
+    if(err) throw new Error("Failed to update terms status");
+    res.json({message:"Terms Accepted"})
+  })
+})
+
 
 router.post('/',registerUser)
 router.post('/auth',authUser)
 router.post('/logout',logoutUser)
 router.get('/profile',protect,getUser)
 router.put('/profile',protect,updateUser)
+router.put('/terms',protect,acceptTerms)
 
 module.exports = router;
