@@ -576,12 +576,35 @@ const updateDistributorMargin = asyncHandler(async(req,res)=>{
 
 })
 
+const disributorStatus= asyncHandler(async(req,res)=>{
+  const {id,status} = req.body
+
+  try {
+    if (status===undefined) {
+      res.status(400).json({error:"Status is undefined"})
+    }
+
+    let distributorStatusSql= 'update distributor set distributor_status = ? where distributor_id=?'
+
+    await new Promise((resolve, reject) => {
+      db.query(distributorStatusSql,[status,id],(err,result)=>{
+        if(err) reject (err)
+        resolve(result)
+      })
+    })
+    res.status(201).json({message:"Status updated successfully"})
+  } catch (err) {
+    res.status(500).json({message:'Internal server error',err})
+  }
+})
+
 router.get("/profile", protect, getDistributor);
 router.post("/profile/id", protect, getDistributorDetails);
 router.post("/register", protect, createDistributor);
 router.put("/profile", protect, updateDistributor);
 router.post("/approve", protect, approveDistributor);
 router.put("/update", protect, updateDistributorMargin);
+router.put("/status", protect, disributorStatus);
 
 
 module.exports = router;
