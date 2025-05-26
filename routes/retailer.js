@@ -518,11 +518,36 @@ const updateRetailerPencentage = asyncHandler(async(req,res)=>{
   }
 
 })
+
+const retailerStatus= asyncHandler(async(req,res)=>{
+  console.log(req.body);
+  
+  const {id,status} = req.body
+
+  try {
+    if (status===undefined) {
+      res.status(400).json({error:"Status is undefined"})
+    }
+
+    let distributorStatusSql= 'update retailer set retailer_status = ? where retailer_id=?'
+
+    await new Promise((resolve, reject) => {
+      db.query(distributorStatusSql,[status,id],(err,result)=>{
+        if(err) reject (err)
+        resolve(result)
+      })
+    })
+    res.status(201).json({message:"Status updated successfully"})
+  } catch (err) {
+    res.status(500).json({message:'Internal server error',err})
+  }
+})
 router.post('/profile',protect,getRetailer)
 router.post('/profile/id',protect,getRetailerDetails)
 router.post('/register',protect,createRetailer)
 router.put('/profile',protect,updateRetailer)
 router.post('/approve',protect,approveRetailer)
 router.put('/update',protect,updateRetailerPencentage)
+router.put("/status", protect, retailerStatus);
 
 module.exports=router
