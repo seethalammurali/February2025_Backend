@@ -1,5 +1,5 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 const asyncHandler = require('express-async-handler')
 const db = require('../config/db')
 const bcrypt = require('bcryptjs')
@@ -53,7 +53,7 @@ const authUser = asyncHandler(async(req,res)=>{
   const {userid,password,geoLocation} = req.body
   
   
-    const authSql = 'select user_id,user_password,user_email,Role,terms_accepted from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
+    const authSql = 'select user_id,user_password,user_email,Role,user_mobile,terms_accepted from login l join user_roles ur on l.role_id=ur.ID where user_id=? '
     try {
       const user = await new Promise((resolve,reject)=>{
         db.query(authSql,[userid],(err,result)=>{
@@ -98,6 +98,7 @@ const authUser = asyncHandler(async(req,res)=>{
         id:user.user_id,
         email:user.user_email,
         role:user.Role,
+        phone:user.user_mobile,
         termsAccepted:user.terms_accepted
       })
     } catch (err) {
