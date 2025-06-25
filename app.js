@@ -13,6 +13,7 @@ const retailerRouter = require('./routes/retailer')
 const dashboardRouter = require('./routes/dashboard')
 const paymentsRouter = require('./routes/payments')
 const cashFreeAPI = require('./routes/cashfree')
+const RazorPay = require('./routes/razorpay')
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload')
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/retailer', retailerRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/cashfree',cashFreeAPI)
+app.use('/api/razor',RazorPay)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
