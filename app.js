@@ -14,6 +14,8 @@ const dashboardRouter = require('./routes/dashboard')
 const paymentsRouter = require('./routes/payments')
 const cashFreeAPI = require('./routes/cashfree')
 const RazorPay = require('./routes/razorpay')
+const BankCard = require('./routes/bankCard')
+const Contact = require('./routes/contact')
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload')
 const app = express();
@@ -46,6 +48,8 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/cashfree',cashFreeAPI)
 app.use('/api/razor',RazorPay)
+app.use('/api/bank',BankCard)
+app.use('/api/contact',Contact)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
