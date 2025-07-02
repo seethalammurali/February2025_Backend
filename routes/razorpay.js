@@ -11,7 +11,8 @@ const instance = new Razorpay({
 })
 
 const createOrder = asyncHandler(async (req,res) => {
-    const {amount,phone,customerID} = req.body
+    const {amount,phone,customerID,charges} = req.body
+    const creditedAmount = amount-(amount*charges/100)
 
     const request = {
         amount : parseInt(amount *100),
@@ -21,23 +22,23 @@ const createOrder = asyncHandler(async (req,res) => {
     }
     try {
         const order = await instance.orders.create(request)
-        const createOrderSQL = 'insert into transactions (user_id,order_id,amount,phone,transaction_date) values (?,?,?,?,?)'
-            db.query(createOrderSQL,[customerID,order.id,amount,phone,new Date()],(err,result)=>{
+        const createOrderSQL = 'insert into orders (order_user_id,order_id,order_amount,order_charges,order_credited_amount,order_phone,created_timestamp) values (?,?,?,?,?,?,?)'
+            db.query(createOrderSQL,[customerID,order.id,amount,charges,creditedAmount,phone,new Date()],(err,result)=>{
                 if (err) {
                     res.status(400)
                     console.log(err);
                     throw new Error("Database insert Failed");
-                    
+
                 }
                 console.log(result);
-                
+
                 return res.status(201).json({orderid:order.id,amount:order.amount,currency:order.currency})
             })
     } catch (err) {
         console.log(err);
         res.status(500).json({error:err.message})
     }
-    
+
 })
 
 router.post("/",protect,createOrder)
