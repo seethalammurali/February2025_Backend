@@ -124,9 +124,9 @@ const logoutUser = ((req,res)=>{
 // @desc Get user profile   
 // @route POST /api/users/auth
 // @access Public
-const getUser = asyncHandler(async(req,res)=>{
+const getUser = asyncHandler(async(req,res)=>{  
+  console.log(req.user);
   
-    
   if (req.user) {
     res.json({
       id: req.user.id,
