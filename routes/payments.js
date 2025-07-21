@@ -112,25 +112,37 @@ const paymentStatus = asyncHandler(async (req, res) => {
 
 
 
-const orderHistory = asyncHandler(async (req,res) => {
-    const {userId} = req.body
+const orderHistory = asyncHandler(async (req, res) => {
+  const { userId } = req.body;
 
-    const orderHistorySQL = "select * from orders where order_user_id = ?";
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  const orderHistorySQL = "SELECT * FROM payments WHERE user_id = ? ORDER BY payment_date DESC";
+
   try {
     const orders = await new Promise((resolve, reject) => {
-      db.query(orderHistorySQL,[userId], (err, result) => {
-        if (err) reject(err);
+      db.query(orderHistorySQL, [userId], (err, result) => {
+        if (err) {
+          console.error("Database error:", err);
+          return reject(err);
+        }
         resolve(result);
+
       });
     });
 
-    res.status(200).json(orders)
+    if (orders.length === 0) {
+      return res.status(404).json({ message: "No transactions found" });
+    }
+
+    res.status(200).json({  orders });
   } catch (err) {
-
-    res.status(500).json({message:'Failed to fetch Transactions'})
+    res.status(500).json({ message: "Failed to fetch transactions" });
   }
+});
 
-})
 
 
 router.post("/",protect,createOrder)
