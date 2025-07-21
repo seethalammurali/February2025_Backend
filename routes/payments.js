@@ -9,10 +9,7 @@ const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `$
 
 const createOrder = asyncHandler(async(req,res)=>{
     const {amount,phone,customerID,orderID,charges} = req.body
-    console.log(req.body);
 
-    const creditedAmount = amount-(amount*charges/100)
-    console.log("step 2",creditedAmount);
 
     const request = {
         "order_amount": amount,
@@ -44,15 +41,14 @@ const createOrder = asyncHandler(async(req,res)=>{
 })
 
 const paymentStatus = asyncHandler(async (req, res) => {
-    const { orderID, customerID } = req.body;
-    console.log("step 10");
+    const { orderID, customerID,charges } = req.body;
+
 
     try {
         const response = await cashfree.PGOrderFetchPayments(orderID);
-        console.log(response.data);
 
         const { payment_status, order_amount } = response.data[0];
-        console.log("step 11",payment_status,order_amount);
+        const creditedAmount = order_amount-(order_amount*charges/100)
 
         // Check if order already marked SUCCESS
         const paymentCheckSQL = `SELECT status FROM payments WHERE order_id = ?`;
@@ -86,7 +82,7 @@ const paymentStatus = asyncHandler(async (req, res) => {
                             UPDATE wallet
                             SET wallet_balance = wallet_balance + ?, wallet_updated_at= ?
                             WHERE wallet_user_id = ?`;
-                        db.query(updateWalletSQL, [order_amount, new Date(), customerID],(err,result)=>{
+                        db.query(updateWalletSQL, [creditedAmount, new Date(), customerID],(err,result)=>{
                             console.log(err);
                             console.log(result);
 
@@ -98,7 +94,7 @@ const paymentStatus = asyncHandler(async (req, res) => {
                         const insertWalletSQL = `
                             INSERT INTO wallet (wallet_user_id, wallet_balance, wallet_updated_at)
                             VALUES (?, ?, ?)`;
-                        db.query(insertWalletSQL, [customerID, order_amount, new Date()]);
+                        db.query(insertWalletSQL, [customerID, creditedAmount, new Date()]);
                     }
 
                     res.status(200).json({ message: "Wallet credited successfully",order_status:response.data });
@@ -118,7 +114,6 @@ const paymentStatus = asyncHandler(async (req, res) => {
 
 const orderHistory = asyncHandler(async (req,res) => {
     const {userId} = req.body
-    console.log(req.body);
 
     const orderHistorySQL = "select * from orders where order_user_id = ?";
   try {
