@@ -7,38 +7,60 @@ const { Cashfree, CFEnvironment } =require("cashfree-pg");
 
 const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `${process.env.SECRET_KEY}`);
 
-const createOrder = asyncHandler(async(req,res)=>{
-    const {amount,phone,customerID,orderID,charges} = req.body
+const createOrder = asyncHandler(async (req, res) => {
+  const { amount, phone, customerID, orderID, charges } = req.body;
+  console.log("Incoming Request:", req.body);
 
+  // Convert charge % to actual value (2 decimal precision)
+  const chargesAmount = Number(((amount * charges) / 100).toFixed(2));
+  const creditedAmount = Number((amount - chargesAmount).toFixed(2));
 
-    const request = {
-        "order_amount": amount,
-        "order_currency": process.env.CURRENCY,
-        "order_id": orderID,
-        "customer_details": {
-            "customer_id": customerID,
-            "customer_phone": phone
-        },
-        "order_meta": {
-            "return_url": process.env.STATUS_PAGE
-        }
-    };
+  console.log("Charges Amount:", chargesAmount);
+  console.log("Credited Amount:", creditedAmount);
 
-    cashfree.PGCreateOrder(request).then((response) => {
-      const createOrderSQL = 'insert into payments (user_id,order_id,amount,charges,currency,payment_date) values (?,?,?,?,?,?)'
-      db.query(createOrderSQL,[customerID,orderID,amount,charges*100,process.env.CURRENCY,new Date()],(err,result)=>{
+  const request = {
+    order_amount: amount,
+    order_currency: process.env.CURRENCY,
+    order_id: orderID,
+    customer_details: {
+      customer_id: customerID,
+      customer_phone: phone,
+    },
+    order_meta: {
+      return_url: process.env.STATUS_PAGE,
+    },
+  };
+
+  try {
+    const response = await cashfree.PGCreateOrder(request);
+
+    const createOrderSQL = `
+      INSERT INTO payments (user_id, order_id, amount, charges, currency, payment_date)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      createOrderSQL,
+      [customerID, orderID, amount, chargesAmount, process.env.CURRENCY, new Date()],
+      (err, result) => {
         if (err) {
-          res.status(400)
-          console.log(err);
-          throw new Error("");
+          console.error("DB Insert Error:", err);
+          res.status(400);
+          throw new Error("Failed to insert order into DB");
         }
-      })
-      res.status(201).json({Message:'Order Created Successfully',Session_ID:response.data.payment_session_id})
-    }).catch((error) => {
-        res.status(400).json({message:error.response.data.message})
-    });
 
-})
+        return res.status(201).json({
+          message: "Order Created Successfully",
+          Session_ID: response.data.payment_session_id,
+        });
+      }
+    );
+  } catch (error) {
+    console.error("Cashfree Error:", error?.response?.data || error.message);
+    res.status(400).json({ message: error?.response?.data?.message || "Payment failed" });
+  }
+});
+
 
 const paymentStatus = asyncHandler(async (req, res) => {
     const { orderID, customerID,charges } = req.body;
