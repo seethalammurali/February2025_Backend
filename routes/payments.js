@@ -28,38 +28,93 @@ const createOrder = asyncHandler(async(req,res)=>{
     };
 
     cashfree.PGCreateOrder(request).then((response) => {
-        res.status(201).json({Message:'Order Created Successfully',Session_ID:response.data.payment_session_id})
+      const createOrderSQL = 'insert into payments (user_id,order_id,amount,charges,currency,payment_date) values (?,?,?,?,?,?)'
+      db.query(createOrderSQL,[customerID,orderID,amount,charges*100,process.env.CURRENCY,new Date()],(err,result)=>{
+        if (err) {
+          res.status(400)
+          console.log(err);
+          throw new Error("");
+        }
+      })
+      res.status(201).json({Message:'Order Created Successfully',Session_ID:response.data.payment_session_id})
     }).catch((error) => {
         res.status(400).json({message:error.response.data.message})
     });
-    const createOrderSQL = 'insert into orders (order_user_id,order_id,order_amount,order_charges,order_credited_amount,order_phone,created_timestamp) values (?,?,?,?,?,?,?)'
 
-    await new Promise((resolve, reject) => {
-        db.query(createOrderSQL,[customerID,orderID,amount,charges,creditedAmount,phone,new Date()],(err,result)=>{
+})
+
+const paymentStatus = asyncHandler(async (req, res) => {
+    const { orderID, customerID } = req.body;
+    console.log("step 10");
+
+    try {
+        const response = await cashfree.PGOrderFetchPayments(orderID);
+        console.log(response.data);
+
+        const { payment_status, order_amount } = response.data[0];
+        console.log("step 11",payment_status,order_amount);
+
+        // Check if order already marked SUCCESS
+        const paymentCheckSQL = `SELECT status FROM payments WHERE order_id = ?`;
+
+        db.query(paymentCheckSQL, [orderID], (err, rows) => {
             if (err) {
-                res.status(400)
-                console.log(err);
-                throw new Error("");
+                console.error("DB check failed", err);
+                return res.status(500).json({ message: "Internal error" });
+                console.log("step 12");
 
             }
-        })
-    })
-})
 
-const paymentStatus = asyncHandler(async (req,res) => {
-    const {orderID} = req.body
-    console.log("Order id",req.body);
+            const existingStatus = rows[0]?.status;
 
-    cashfree.PGOrderFetchPayments(orderID).then((response) => {
-    console.log('Order fetched successfully:', response.data);
-    res.status(200).json({order_status:response.data})
-}).catch((err) => {
-    console.error('Error:', err.response.data.message);
-    res.status(400).json({message:err.response.data.message})
+            if (payment_status === "SUCCESS" && existingStatus !== "SUCCESS") {
+                // Update payment status
+                const updateStatusSQL = `UPDATE payments SET status = ? WHERE order_id = ?`;
+                db.query(updateStatusSQL, ["SUCCESS", orderID]);
+                console.log("step 12.1");
 
-    });
+                // Update or Insert wallet
+                const checkWalletSQL = `SELECT * FROM wallet WHERE wallet_user_id = ? LIMIT 1`;
+                db.query(checkWalletSQL, [customerID], (err, rows) => {
+                    if (err) return console.error("Wallet check error:", err);
+                    console.log("step 13");
 
-})
+                    if (rows.length > 0) {
+                        console.log("step 14");
+
+                        const updateWalletSQL = `
+                            UPDATE wallet
+                            SET wallet_balance = wallet_balance + ?, wallet_updated_at= ?
+                            WHERE wallet_user_id = ?`;
+                        db.query(updateWalletSQL, [order_amount, new Date(), customerID],(err,result)=>{
+                            console.log(err);
+                            console.log(result);
+
+
+                        });
+                    } else {
+                        console.log("step 15");
+
+                        const insertWalletSQL = `
+                            INSERT INTO wallet (wallet_user_id, wallet_balance, wallet_updated_at)
+                            VALUES (?, ?, ?)`;
+                        db.query(insertWalletSQL, [customerID, order_amount, new Date()]);
+                    }
+
+                    res.status(200).json({ message: "Wallet credited successfully",order_status:response.data });
+
+                });
+            } else {
+                res.status(200).json({ message: "Payment not completed or already processed",  });
+            }
+        });
+    } catch (err) {
+        console.error("Cashfree fetch error:", err.response?.data?.message || err.message);
+        res.status(400).json({ message: "Unable to fetch order status" });
+    }
+});
+
+
 
 const orderHistory = asyncHandler(async (req,res) => {
     const {userId} = req.body

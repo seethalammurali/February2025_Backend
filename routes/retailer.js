@@ -25,7 +25,7 @@ const uploadToS3 = async (file,userType,mobile) => {
   try {
     if (!file || !file.data) {
       throw new Error("Invalid file provided for upload");
-      
+
     }
     const retailerId = await generateUserId(userType,mobile)
     const filePath = `${retailerId}/${Date.now()}_${file.name}`
@@ -41,12 +41,12 @@ const uploadToS3 = async (file,userType,mobile) => {
     const command = new PutObjectCommand(uploadParams)
 
     const result = await s3.send(command)
-    
+
     return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/TheQuickPayMe/${filePath}`
   } catch (err) {
     console.log('Error uploading to s3',err);
     throw err
-    
+
   }
 }
 
@@ -101,10 +101,10 @@ const createRetailer = asyncHandler(async (req, res) => {
       retailerPercentage,
     } = req.body;
     console.log(req.body);
-  
+
     let files = req.files || {}
-    
-  
+
+
     if(files.aadharUrl) aadharUrl= await uploadToS3(files.aadharUrl,userType,mobile);
     if(files.panUrl) panUrl= await uploadToS3(files.panUrl,userType,mobile);
     // if(files.profileUrl) profileUrl= await uploadToS3(files.profileUrl);
@@ -119,33 +119,33 @@ const createRetailer = asyncHandler(async (req, res) => {
         if (err) reject(err);
         console.log("step 10",result);
         resolve(result.length>0);
-        
+
       });
     });
     console.log("step 11",customerExist);
-    
+
     if (customerExist) {
       res.status(400);
       throw new Error("Aadhar or Mobile number already exists");
     }
     const createUserSql =
-      "INSERT INTO retailer ( distributor_id,retailer_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,retailer_percentage,created_timestamp,updated_timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
-  
+      "INSERT INTO retailer ( distributor_id,retailer_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,retailer_percentage,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+
   const retailerId = await generateUserId(userType,mobile)
-  
+
   const findRetailerSql = 'select distributor_id from distributor where distributor_id=?'
-  
+
   const distributorExist = await new Promise((resolve, reject) => {
     db.query(findRetailerSql,[retailerId],(err,result)=>{
       if (err) reject(err)
       resolve(result.length>0)
     })
   })
-  
+
   if (distributorExist) {
     res.status(400)
     throw new Error("Retailer exists with the given Mobile");
-    
+
   }
     await new Promise((resolve, reject) => {
       db.query(
@@ -195,13 +195,13 @@ const createRetailer = asyncHandler(async (req, res) => {
         (err, result) => {
           if (err) {
             console.log('step 3',err);
-            
+
             res.status(400);
-            
+
             throw new Error(err);
           }
           console.log(result);
-          
+
           res
             .status(201)
             .json({
@@ -217,7 +217,7 @@ const createRetailer = asyncHandler(async (req, res) => {
 const getRetailer = asyncHandler(async (req, res) => {
   const {distributor} = req.body
   console.log(distributor);
-  
+
   let  findRetailerSql = "select * from retailer"
   let value=[]
   if (distributor) {
@@ -231,13 +231,13 @@ const getRetailer = asyncHandler(async (req, res) => {
         resolve(result);
         });
     });
-    
+
     if (user.length>0) {
         res.status(201).json(user);
     }else{
       return res.status(400).json({message:'No retailer found'})
     }
-    
+
   } catch (err) {
     res.status(500).json({message:'Database error',err})
   }
@@ -292,47 +292,47 @@ const updateRetailer = asyncHandler(async(req,res)=>{
         }
         return{[key]:null}
       })
-      
+
       const uploadFiles =Object.assign({},...(await Promise.all(uploadPromises)))
-    const updateRetailerSql = `UPDATE retailer 
-            SET 
-                distributor_id = COALESCE(?, distributor_id), 
+    const updateRetailerSql = `UPDATE retailer
+            SET
+                distributor_id = COALESCE(?, distributor_id),
                 retailer_id = COALESCE(?,retailer_id),
-                role_id = COALESCE(?, role_id), 
-                user_type = COALESCE(?, user_type), 
-                name_as_per_aadhaar = COALESCE(?, name_as_per_aadhaar), 
-                aadhar_number = COALESCE(?, aadhar_number), 
-                dob = COALESCE(?, dob), 
-                gender = COALESCE(?, gender), 
-                address = COALESCE(?, address), 
-                state = COALESCE(?, state), 
-                district = COALESCE(?, district), 
-                pincode = COALESCE(?, pincode), 
-                user_mobile = COALESCE(?, user_mobile), 
-                user_email = COALESCE(?, user_email), 
+                role_id = COALESCE(?, role_id),
+                user_type = COALESCE(?, user_type),
+                name_as_per_aadhaar = COALESCE(?, name_as_per_aadhaar),
+                aadhar_number = COALESCE(?, aadhar_number),
+                dob = COALESCE(?, dob),
+                gender = COALESCE(?, gender),
+                address = COALESCE(?, address),
+                state = COALESCE(?, state),
+                district = COALESCE(?, district),
+                pincode = COALESCE(?, pincode),
+                user_mobile = COALESCE(?, user_mobile),
+                user_email = COALESCE(?, user_email),
                 user_password = COALESCE(?, user_password),
                 aadhar_url=COALESCE(?, aadhar_url),
-                pan_number = COALESCE(?, pan_number), 
-                pan_url = COALESCE(?, pan_url), 
-                name_as_per_pan = COALESCE(?, name_as_per_pan), 
-                business_name = COALESCE(?, business_name), 
-                business_category = COALESCE(?, business_category), 
-                business_address = COALESCE(?, business_address), 
-                business_state = COALESCE(?, business_state), 
-                business_district = COALESCE(?, business_district), 
-                business_pincode = COALESCE(?, business_pincode), 
-                business_labour_license_Number = COALESCE(?, business_labour_license_Number), 
-                business_proprietor_Name = COALESCE(?, business_proprietor_Name), 
-                shop_photo_url = COALESCE(?, shop_photo_url), 
-                business_ll_url = COALESCE(?, business_ll_url), 
-                bank_name = COALESCE(?, bank_name), 
-                account_number = COALESCE(?, account_number), 
-                cancelled_check_url = COALESCE(?, cancelled_check_url), 
-                ifsc_code = COALESCE(?, ifsc_code), 
-                account_holder_name = COALESCE(?, account_holder_name), 
-                doj = COALESCE(?, doj), 
-                kyc_status = COALESCE(?, kyc_status), 
-                comments = COALESCE(?, comments), 
+                pan_number = COALESCE(?, pan_number),
+                pan_url = COALESCE(?, pan_url),
+                name_as_per_pan = COALESCE(?, name_as_per_pan),
+                business_name = COALESCE(?, business_name),
+                business_category = COALESCE(?, business_category),
+                business_address = COALESCE(?, business_address),
+                business_state = COALESCE(?, business_state),
+                business_district = COALESCE(?, business_district),
+                business_pincode = COALESCE(?, business_pincode),
+                business_labour_license_Number = COALESCE(?, business_labour_license_Number),
+                business_proprietor_Name = COALESCE(?, business_proprietor_Name),
+                shop_photo_url = COALESCE(?, shop_photo_url),
+                business_ll_url = COALESCE(?, business_ll_url),
+                bank_name = COALESCE(?, bank_name),
+                account_number = COALESCE(?, account_number),
+                cancelled_check_url = COALESCE(?, cancelled_check_url),
+                ifsc_code = COALESCE(?, ifsc_code),
+                account_holder_name = COALESCE(?, account_holder_name),
+                doj = COALESCE(?, doj),
+                kyc_status = COALESCE(?, kyc_status),
+                comments = COALESCE(?, comments),
                 retailer_percentage = COALESCE(?, retailer_percentage),
                 updated_timestamp = COALESCE(?, updated_timestamp)
               WHERE ID = ?`;
@@ -400,33 +400,33 @@ const updateRetailer = asyncHandler(async(req,res)=>{
 
 const approveRetailer = asyncHandler(async (req, res) => {
   console.log(req.body);
-  
-  const {retailer,status,create,update} = req.body 
+
+  const {retailer,status,create,update} = req.body
   const password = process.env.RETAILER_PSWD
   console.log("step 1",password);
-  
+
   const retailerExistSql = 'select role_id,retailer_id,user_mobile,user_email,kyc_status from retailer where retailer_id=?'
   try {
-    
+
     const retailerExist = await new Promise((resolve, reject) => {
       db.query(retailerExistSql,[retailer],(err,result)=>{
         if(err) reject(err)
           console.log("step 2",result);
-          
+
           resolve(result)
       })
     })
     console.log('step 3',retailerExist);
-    
+
     const salt = await bcrypt.genSalt(10)
     const hashedPassword = await bcrypt.hash(password,salt)
     let updateSql
     let updateParams
-  
+
     if (retailerExist.length===0) {
       return res.status(404).json({message:"Retailer not found"})
     }
-    
+
     const {role_id,retailer_id,user_mobile,user_email} = retailerExist[0]
 
     if (status==='Approve') {
@@ -441,7 +441,7 @@ const approveRetailer = asyncHandler(async (req, res) => {
       })
 
       // create retailer login
-      insertSql = 'INSERT INTO login (role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?)'
+      insertSql = 'INSERT INTO users (role_id, user_id,user_password,user_mobile,user_email,created_at,updated_at)VALUES(?,?,?,?,?,?,?)'
       insertParams=[role_id,retailer_id,hashedPassword,user_mobile,user_email,formattedDate(create),formattedDate(update)]
 
       await new Promise((resolve, reject) => {
@@ -454,7 +454,7 @@ const approveRetailer = asyncHandler(async (req, res) => {
     } else if (status==='Reject') {
       updateSql ='update retailer set kyc_status=? where retailer_id=?'
       updateParams=[status,retailer]
-      
+
       await new Promise((resolve, reject) => {
         db.query(updateSql,updateParams,(err,result)=>{
           if(err) reject(err)
@@ -464,7 +464,7 @@ const approveRetailer = asyncHandler(async (req, res) => {
       res.status(200).json({message:'Retailer Rejected'})
     } else{
       return res.status(400).json({message:'Inavalid status provided'})
-    }    
+    }
   } catch (err) {
     res.status(500).json({message:'Internal server error',err})
   }
@@ -473,7 +473,7 @@ const approveRetailer = asyncHandler(async (req, res) => {
 const getRetailerDetails = asyncHandler(async (req, res) => {
     const {retailerId} = req.body
     console.log(req.body);
-    
+
     const getRetailerDetailsSql ='select * from retailer where retailer_id=?'
     const retailer = await new Promise((resolve,reject)=>{
       db.query(getRetailerDetailsSql,[retailerId],(err,result)=>{
@@ -481,7 +481,7 @@ const getRetailerDetails = asyncHandler(async (req, res) => {
           resolve(result)
       })
     })
-  
+
     if (retailer) {
       res.status(201).json(retailer)
     }
@@ -501,7 +501,7 @@ const updateRetailerPencentage = asyncHandler(async(req,res)=>{
     if (id) {
       updateRetailerPercentageSql+=" where retailer_id=?"
     }
-    
+
 
     await new Promise((resolve,reject)=>{
       db.query(updateRetailerPercentageSql,[param,id],(err,result)=>{
@@ -511,8 +511,8 @@ const updateRetailerPencentage = asyncHandler(async(req,res)=>{
     })
 
     res.status(201).json({message:'Margin Updated successfully'})
-    
-    
+
+
   } catch (err) {
     res.status(500).json({message:'Internal server error',err})
   }
@@ -521,7 +521,7 @@ const updateRetailerPencentage = asyncHandler(async(req,res)=>{
 
 const retailerStatus= asyncHandler(async(req,res)=>{
   console.log(req.body);
-  
+
   const {id,status} = req.body
 
   try {
