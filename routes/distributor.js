@@ -9,7 +9,7 @@ const {uploadDir} =require('../config/uploads')
 const {s3,S3_BUCKET} = require('../config/aws3');
 const {PutObjectCommand} = require('@aws-sdk/client-s3');
 const {encrypt,decrypt} = require('../middleware/encryption')
- 
+
 const formattedDate =(value)=>{
   const date = new Date(value)
   const year = date.getFullYear();
@@ -29,10 +29,10 @@ const uploadToS3 = async (file,userType,mobile) => {
 
     const distributorFolder = await generateUserId(userType,mobile);
     console.log("step 1",distributorFolder);
-    
+
     const filePath = `${distributorFolder}/${Date.now()}_${file.name}`
     console.log('step 2',filePath);
-    
+
 
     const uploadParams = {
       Bucket:S3_BUCKET,
@@ -45,12 +45,12 @@ const uploadToS3 = async (file,userType,mobile) => {
     const command = new PutObjectCommand(uploadParams)
 
     const result = await s3.send(command)
-    
+
     return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/TheQuickPayMe/${filePath}`
   } catch (err) {
     console.log('Error uploading to s3',err);
     throw err
-    
+
   }
 }
 function generateUserId(userType,mobile) {
@@ -121,7 +121,7 @@ const createDistributor = asyncHandler(async (req, res) => {
 
   let files = req.files || {}
 
-  // let aadhar 
+  // let aadhar
 
   if(files.aadharUrl) aadharUrl= await uploadToS3(files.aadharUrl,userType,mobile);
   if(files.panUrl) panUrl= await uploadToS3(files.panUrl,userType,mobile);
@@ -138,19 +138,19 @@ const createDistributor = asyncHandler(async (req, res) => {
       if (err) reject(err);
       console.log("step 10",result);
       resolve(result.length>0);
-      
+
     });
   });
   console.log("step 11",customerExist);
-  
+
   if (customerExist) {
     res.status(400);
     throw new Error("Aadhar or Mobile number already exists");
   }
   const createUserSql =
-    "INSERT INTO distributor ( distributor_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,distributor_margin,created_timestamp,updated_timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    "INSERT INTO distributor ( distributor_id,role_id,user_type,name_as_per_aadhaar,aadhar_number,dob,gender,address,state,district,pincode,user_mobile,user_email,user_password,aadhar_url,pan_number,name_as_per_pan,pan_url,business_name,business_category,business_address,business_state,business_district,business_pincode,business_labour_license_Number,business_proprietor_Name,shop_photo_url,business_ll_url,bank_name,account_number,ifsc_code,account_holder_name,cancelled_check_url,doj,kyc_status,comments,distributor_margin,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-   
+
 const distributorId = await generateUserId(userType,mobile)
 
 const findDistributorSql = 'select distributor_id from distributor where distributor_id=?'
@@ -165,7 +165,7 @@ const distributorExist = await new Promise((resolve, reject) => {
 if (distributorExist) {
   res.status(400)
   throw new Error("Distributor exists with the given Mobile");
-  
+
 }
   await new Promise((resolve, reject) => {
     db.query(
@@ -215,13 +215,13 @@ if (distributorExist) {
       (err, result) => {
         if (err) {
           console.log('step 3',err);
-          
+
           res.status(400);
-          
+
           throw new Error(err);
         }
         console.log(result);
-        
+
         res
           .status(201)
           .json({
@@ -246,16 +246,16 @@ const getDistributor = asyncHandler(async (req, res) => {
       });
     });
     const decryptedData = user.map((item)=>{
-      
+
         const decryptedUser = {...item}
-  
+
         for(const key in decryptedUser){
           if (isEncrypted(decryptedUser[key])) {
             try {
               decryptedUser[key]= decrypt(decryptedUser[key])
             } catch (err) {
               console.warn(`Decryption failed for key  ${key}`);
-              
+
             }
           }
         }
@@ -263,7 +263,7 @@ const getDistributor = asyncHandler(async (req, res) => {
     })
     res.status(201).json(decryptedData)
   } catch (err) {
-    
+
     res.status(500).json({message:'Failed to fetch disributor'})
   }
 
@@ -316,58 +316,58 @@ const updateDistributor = asyncHandler(async (req, res) => {
     } = req.body
     console.log("step 10",req.body);
     console.log("step 11",req.files);
-  
+
     let files = req.files || {}
-  
+
     const uploadPromises = ["aadharUrl","panUrl","labourLicenseUrl","shopImageUrl","cancelledCheckUrl"].map(async (key) => {
       if (files[key]) {
         return {[key]:await uploadToS3(files[key],userType,mobile)}
       }
       return{[key]:null}
     })
-  
+
     const uploadFiles =Object.assign({},...(await Promise.all(uploadPromises)))
-    const updateDistributorSql = `UPDATE distributor 
-            SET 
-                distributor_id = COALESCE(?, distributor_id), 
-                role_id = COALESCE(?, role_id), 
-                user_type = COALESCE(?, user_type), 
-                name_as_per_aadhaar = COALESCE(?, name_as_per_aadhaar), 
-                aadhar_number = COALESCE(?, aadhar_number), 
-                dob = COALESCE(?, dob), 
-                gender = COALESCE(?, gender), 
-                address = COALESCE(?, address), 
-                state = COALESCE(?, state), 
-                district = COALESCE(?, district), 
-                pincode = COALESCE(?, pincode), 
-                user_mobile = COALESCE(?, user_mobile), 
-                user_email = COALESCE(?, user_email), 
+    const updateDistributorSql = `UPDATE distributor
+            SET
+                distributor_id = COALESCE(?, distributor_id),
+                role_id = COALESCE(?, role_id),
+                user_type = COALESCE(?, user_type),
+                name_as_per_aadhaar = COALESCE(?, name_as_per_aadhaar),
+                aadhar_number = COALESCE(?, aadhar_number),
+                dob = COALESCE(?, dob),
+                gender = COALESCE(?, gender),
+                address = COALESCE(?, address),
+                state = COALESCE(?, state),
+                district = COALESCE(?, district),
+                pincode = COALESCE(?, pincode),
+                user_mobile = COALESCE(?, user_mobile),
+                user_email = COALESCE(?, user_email),
                 user_password = COALESCE(?, user_password),
                 aadhar_url=COALESCE(?, aadhar_url),
-                pan_number = COALESCE(?, pan_number), 
-                pan_url = COALESCE(?, pan_url), 
-                name_as_per_pan = COALESCE(?, name_as_per_pan), 
-                business_name = COALESCE(?, business_name), 
-                business_category = COALESCE(?, business_category), 
-                business_address = COALESCE(?, business_address), 
-                business_state = COALESCE(?, business_state), 
-                business_district = COALESCE(?, business_district), 
-                business_pincode = COALESCE(?, business_pincode), 
-                business_labour_license_Number = COALESCE(?, business_labour_license_Number), 
-                business_proprietor_Name = COALESCE(?, business_proprietor_Name), 
-                shop_photo_url = COALESCE(?, shop_photo_url), 
-                business_ll_url = COALESCE(?, business_ll_url), 
-                bank_name = COALESCE(?, bank_name), 
-                account_number = COALESCE(?, account_number), 
-                cancelled_check_url = COALESCE(?, cancelled_check_url), 
-                ifsc_code = COALESCE(?, ifsc_code), 
-                account_holder_name = COALESCE(?, account_holder_name), 
-                doj = COALESCE(?, doj), 
-                kyc_status = COALESCE(?, kyc_status), 
-                comments = COALESCE(?, comments), 
+                pan_number = COALESCE(?, pan_number),
+                pan_url = COALESCE(?, pan_url),
+                name_as_per_pan = COALESCE(?, name_as_per_pan),
+                business_name = COALESCE(?, business_name),
+                business_category = COALESCE(?, business_category),
+                business_address = COALESCE(?, business_address),
+                business_state = COALESCE(?, business_state),
+                business_district = COALESCE(?, business_district),
+                business_pincode = COALESCE(?, business_pincode),
+                business_labour_license_Number = COALESCE(?, business_labour_license_Number),
+                business_proprietor_Name = COALESCE(?, business_proprietor_Name),
+                shop_photo_url = COALESCE(?, shop_photo_url),
+                business_ll_url = COALESCE(?, business_ll_url),
+                bank_name = COALESCE(?, bank_name),
+                account_number = COALESCE(?, account_number),
+                cancelled_check_url = COALESCE(?, cancelled_check_url),
+                ifsc_code = COALESCE(?, ifsc_code),
+                account_holder_name = COALESCE(?, account_holder_name),
+                doj = COALESCE(?, doj),
+                kyc_status = COALESCE(?, kyc_status),
+                comments = COALESCE(?, comments),
                 distributor_margin = COALESCE(?, distributor_margin),
-                updated_timestamp = COALESCE(?, updated_timestamp)
-            WHERE ID = ?`;
+                updated_at = COALESCE(?, updated_timestamp)
+            WHERE id = ?`;
 
     const newDistributorId  = await generateUserId(userType,mobile)
   await new Promise((resolve, reject) => {
@@ -412,7 +412,7 @@ const updateDistributor = asyncHandler(async (req, res) => {
         ditributorMargin,
         formattedDate(update),
         ID],(err,result)=>{
-          
+
           if (err) {
             console.log('Error in updating distributor',err);
             res.status(500).json({message:'Database update failed'})
@@ -421,27 +421,27 @@ const updateDistributor = asyncHandler(async (req, res) => {
             res.status(201).json({message:'Distributor updated successfully',newDistributorId})
             resolve(result)
             console.log(result);
-            
+
           }
         })
   })
   } catch (err) {
     console.log(err);
     res.status(500).json({message:'Internal server error',err})
-    
+
   }
-  
+
 });
 // @desc Get user profile
 // @route POST /api/users/auth
 // @access Public
 
 const approveDistributor = asyncHandler(async (req, res) => {
-  const {distributor,status,create,update} = req.body 
+  const {distributor,status,create,update} = req.body
   const password = process.env.DISTRIBUTOR_PSWD
   const distributorExistSql = 'select role_id,distributor_id,user_mobile,user_email,kyc_status from distributor where distributor_id=?'
   try {
-    
+
     const distributorExist = await new Promise((resolve, reject) => {
       db.query(distributorExistSql,[distributor],(err,result)=>{
         if(err) reject(err)
@@ -452,11 +452,11 @@ const approveDistributor = asyncHandler(async (req, res) => {
     const hashedPassword = await bcrypt.hash(password,salt)
     let updateSql
     let updateParams
-  
+
     if (distributorExist.length===0) {
       return res.status(404).json({message:"Distributor not found"})
     }
-    
+
     const {role_id,distributor_id,user_mobile,user_email} = distributorExist[0]
 
     if (status==='Approve') {
@@ -471,7 +471,7 @@ const approveDistributor = asyncHandler(async (req, res) => {
       })
 
       // create distributor login
-      insertSql = 'INSERT INTO login (role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?)'
+      insertSql = 'INSERT INTO users (role_id, user_id,user_password,user_mobile,user_email,created_at,updated_at)VALUES(?,?,?,?,?,?,?)'
       insertParams=[role_id,distributor_id,hashedPassword,user_mobile,user_email,formattedDate(create),formattedDate(update)]
 
       await new Promise((resolve, reject) => {
@@ -484,7 +484,7 @@ const approveDistributor = asyncHandler(async (req, res) => {
     } else if (status==='Reject') {
       updateSql ='update distributor set kyc_status=? where distributor_id=?'
       updateParams=[status,distributor]
-      
+
       await new Promise((resolve, reject) => {
         db.query(updateSql,updateParams,(err,result)=>{
           if(err) reject(err)
@@ -494,8 +494,10 @@ const approveDistributor = asyncHandler(async (req, res) => {
       res.status(200).json({message:'Distributor Rejected'})
     } else{
       return res.status(400).json({message:'Inavalid status provided'})
-    }    
+    }
   } catch (err) {
+    console.log(err);
+
     res.status(500).json({message:'Internal server error',err})
   }
 });
@@ -506,7 +508,7 @@ const approveDistributor = asyncHandler(async (req, res) => {
 
 const getDistributorDetails = asyncHandler(async (req, res) => {
   const {ditributorId} = req.body
-  
+
   const getDistributorDetailsSql ='select * from distributor where distributor_id=?'
   try {
     const distributor = await new Promise((resolve,reject)=>{
@@ -517,23 +519,23 @@ const getDistributorDetails = asyncHandler(async (req, res) => {
     })
     const decryptedData = distributor.map((item)=>{
       console.log(item);
-      
+
         const decryptedUser = {...item}
-  
+
         for(const key in decryptedUser){
           if (isEncrypted(decryptedUser[key])) {
             try {
               decryptedUser[key]= decrypt(decryptedUser[key])
             } catch (err) {
               console.warn(`Decryption failed for key  ${key}`);
-              
+
             }
           }
         }
         return decryptedUser
     })
     res.status(201).json(decryptedData)
-    
+
   } catch (err) {
     console.log(err);
     res.status(500).json({message:'Failed to Fetch distributor'})
@@ -558,7 +560,7 @@ const updateDistributorMargin = asyncHandler(async(req,res)=>{
     if (id) {
       updateDistributorMarginSql+=" where distributor_id=?"
     }
-    
+
 
     await new Promise((resolve,reject)=>{
       db.query(updateDistributorMarginSql,[param,id],(err,result)=>{
@@ -568,8 +570,8 @@ const updateDistributorMargin = asyncHandler(async(req,res)=>{
     })
 
     res.status(201).json({message:'Margin Updated successfully'})
-    
-    
+
+
   } catch (err) {
     res.status(500).json({message:'Internal server error',err})
   }
