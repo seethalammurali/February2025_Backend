@@ -8,7 +8,7 @@ const { Cashfree, CFEnvironment } =require("cashfree-pg");
 const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `${process.env.SECRET_KEY}`);
 
 const createOrder = asyncHandler(async (req, res) => {
-  const { amount, phone, customerID, orderID, charges } = req.body;
+  const { amount,customerName,Invoice, phone, customerID, orderID, charges } = req.body;
   console.log("Incoming Request:", req.body);
 
   // Convert charge % to actual value (2 decimal precision)
@@ -35,13 +35,13 @@ const createOrder = asyncHandler(async (req, res) => {
     const response = await cashfree.PGCreateOrder(request);
 
     const createOrderSQL = `
-      INSERT INTO payments (user_id, order_id, amount, charges, currency, payment_date)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO payments (user_id, order_id, amount,customer_name,mobile_number, charges, currency,invoice_id, payment_date)
+      VALUES (?, ?, ?, ?, ?, ?,?,?,?)
     `;
 
     db.query(
       createOrderSQL,
-      [customerID, orderID, amount, chargesAmount, process.env.CURRENCY, new Date()],
+      [customerID, orderID, amount,customerName,phone, chargesAmount, process.env.CURRENCY,Invoice, new Date()],
       (err, result) => {
         if (err) {
           console.error("DB Insert Error:", err);
