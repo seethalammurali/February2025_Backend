@@ -8,15 +8,11 @@ const { Cashfree, CFEnvironment } =require("cashfree-pg");
 const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `${process.env.SECRET_KEY}`);
 
 const createOrder = asyncHandler(async (req, res) => {
-  const { amount,customerName,Invoice, phone, customerID, orderID, charges } = req.body;
-  console.log("Incoming Request:", req.body);
+  const { amount,CustomerName,Invoice, phone, customerID, orderID, charges } = req.body;
 
   // Convert charge % to actual value (2 decimal precision)
   const chargesAmount = Number(((amount * charges) / 100).toFixed(2));
   const creditedAmount = Number((amount - chargesAmount).toFixed(2));
-
-  console.log("Charges Amount:", chargesAmount);
-  console.log("Credited Amount:", creditedAmount);
 
   const request = {
     order_amount: amount,
@@ -41,7 +37,7 @@ const createOrder = asyncHandler(async (req, res) => {
 
     db.query(
       createOrderSQL,
-      [customerID, orderID, amount,customerName,phone, chargesAmount, process.env.CURRENCY,Invoice, new Date()],
+      [customerID, orderID, amount,CustomerName,phone, chargesAmount, process.env.CURRENCY,Invoice, new Date()],
       (err, result) => {
         if (err) {
           console.error("DB Insert Error:", err);
@@ -79,7 +75,6 @@ const paymentStatus = asyncHandler(async (req, res) => {
             if (err) {
                 console.error("DB check failed", err);
                 return res.status(500).json({ message: "Internal error" });
-                console.log("step 12");
 
             }
 
@@ -89,16 +84,13 @@ const paymentStatus = asyncHandler(async (req, res) => {
                 // Update payment status
                 const updateStatusSQL = `UPDATE payments SET status = ? WHERE order_id = ?`;
                 db.query(updateStatusSQL, ["SUCCESS", orderID]);
-                console.log("step 12.1");
 
                 // Update or Insert wallet
                 const checkWalletSQL = `SELECT * FROM wallet WHERE wallet_user_id = ? LIMIT 1`;
                 db.query(checkWalletSQL, [customerID], (err, rows) => {
                     if (err) return console.error("Wallet check error:", err);
-                    console.log("step 13");
 
                     if (rows.length > 0) {
-                        console.log("step 14");
 
                         const updateWalletSQL = `
                             UPDATE wallet
@@ -111,7 +103,6 @@ const paymentStatus = asyncHandler(async (req, res) => {
 
                         });
                     } else {
-                        console.log("step 15");
 
                         const insertWalletSQL = `
                             INSERT INTO wallet (wallet_user_id, wallet_balance, wallet_updated_at)
