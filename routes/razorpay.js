@@ -12,6 +12,8 @@ const instance = new Razorpay({
 
 const createOrder = asyncHandler(async (req,res) => {
     const {amount,CustomerName,Invoice,phone,customerID,charges} = req.body
+    console.log("step 10",req.body);
+
 
 
     const chargesAmount = Number(((amount * charges) / 100).toFixed(2));
@@ -47,21 +49,21 @@ const createOrder = asyncHandler(async (req,res) => {
 
 const paymentStatus = asyncHandler(async (req, res) => {
     const { orderID, customerID,charges } = req.body;
-
-
     try {
         const response = await instance.orders.fetch(orderID);
-        // console.log(response,"step 2");
+        console.log(response,"step 2");
 
 
         // const { payment_status, order_amount } = response.data[0];
         const { status, amount_paid } = response;
 
-        const order_amount = parseInt(amount_paid *100)
+        const order_amount = parseInt(amount_paid/100)
         const payment_status = status==="paid"&&"SUCCESS"
         // console.log("step 3",order_amount,payment_status);
 
         const creditedAmount = order_amount-(order_amount*charges/100)
+        console.log("step 1", creditedAmount,order_amount,amount_paid);
+
 
         // Check if order already marked SUCCESS
         const paymentCheckSQL = `SELECT status FROM payments WHERE order_id = ?`;
