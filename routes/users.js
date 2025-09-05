@@ -6,110 +6,117 @@ const bcrypt = require('bcryptjs')
 const protect = require('../config/authMiddleware')
 const generateToken = require('../config/generateToken')
 const {encrypt} = require('../middleware/encryption')
-/* GET users listing. */
+const { User } = require('../models');
 
+/* GET users listing. */
 // @desc Register a new user
 // @route POST /api/users/auth
 // @access Public
 const registerUser = asyncHandler(async(req,res)=>{
+  try {
+    const {id,email,password,userid,role,mobile,create,update} = req.body;
+    if (!email || !password || !userid || !role) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const user = await User.findOne({ where: { user_email: email } });
+    if (user) {
+      return res.status(400).json({ error: "User already exists" });
+    }
 
-  const {id,email,password,userid,role,mobile,create,update} = req.body;
+    // 🔑 Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-  const findUserSql = "select user_email from users where user_email=?";
-
-  const userExists = await new Promise((resolve,reject)=>{
-    db.query(findUserSql, [email], (err, results) => {
-      if (err) reject(err);
-      resolve(results.length > 0);
+    // 📝 Create user using Sequelize
+    const newUser = await User.create({
+      id,
+      role_id: role,
+      user_id: userid,
+      user_password: hashedPassword,
+      user_mobile: encrypt(mobile),
+      user_email: email,
+      created_at: create || new Date(),
+      updated_at: update || new Date(),
     });
 
-  })
-  if (userExists) {
-    res.status(400)
-    throw new Error("User already Exists");
+    return res.status(201).json({
+      message: "User registered successfully",
+      userId: newUser.id,
+    });
+  } catch (err) {
+    console.error("Error in registering user",err);
+    return res.status(500).json({error:'Internal server error'})
   }
-  const salt = await bcrypt.genSalt(10)
-  const hashedPassword = await bcrypt.hash(password,salt)
-  const createUserSql = "INSERT INTO users (ID,role_id, user_id,user_password,user_mobile,user_email,created_timestamp,updated_timestamp)VALUES(?,?,?,?,?,?,?,?)"
-  await new Promise((resolve,reject)=>{
-    db.query(createUserSql,[id,role,userid,hashedPassword,encrypt(mobile),email,create,update],(err,result)=>{
-      if (err) {
-        res.status(400)
-        console.log(err);
-
-        throw new Error("Inavlid User Data");
-      }
-      res.status(201).json({message:'User registered Successfully',userId:result.insertId})
-    })
-  })
-
-
 })
 
 // @desc Auth user & get token
 // @route POST /api/users/auth
 // @access Public
-const authUser = asyncHandler(async(req,res)=>{
-  const {userid,password,geoLocation} = req.body
+const authUser = asyncHandler(async (req, res) => {
+  try {
+    const { userid, password, geoLocation } = req.body;
 
-
-    const authSql = 'select user_id,user_password,user_email,role,user_mobile,terms_accepted from users l join user_roles ur on l.role_id=ur.id where user_id=? '
-    try {
-      const user = await new Promise((resolve,reject)=>{
-        db.query(authSql,[userid],(err,result)=>{
-          if (err) reject (err)
-            resolve(result[0])
-        })
-      })
-      console.log("step 1",user);
-
-
-
-      const matchPassword = await bcrypt.compare(password,user.user_password)
-
-
-      if (!user || !matchPassword) {
-        res.status(401)
-        throw new Error("Invalid credentials");
-
-      }
-      const token = generateToken(res,user.user_id)
-
-       await new Promise((resolve, reject) => {
-        const singleSessionSql = 'update users set session_token=? where user_id=?'
-        db.query(singleSessionSql,[token,userid],(err,result)=>{
-          if (err) reject(err)
-          resolve(result)
-        })
-       })
-
-       if (geoLocation && geoLocation.latitude && geoLocation.longitude ) {
-        await new Promise((resolve, reject) => {
-          const auditSql = `insert into users_audit (user_id,latitude,longitude) values(?,?,?)`
-
-          db.query(auditSql,[userid,geoLocation.latitude,geoLocation.longitude],(err,result)=>{
-            if (err) return reject(err)
-              resolve(result)
-          })
-        })
-       }
-
-
-      res.json({
-        message:'Authentication Successfull',
-        id:user.user_id,
-        email:user.user_email,
-        role:user.role,
-        phone:user.user_mobile,
-        termsAccepted:user.terms_accepted
-      })
-    } catch (err) {
-      console.log(err);
-      res.status(500).json({message:'Authentication Failed'})
+    if (!userid || !password) {
+      return res.status(400).json({ error: "User ID and password are required" });
     }
 
+    // 🔍 Find user with role (Sequelize join using include)
+    const user = await User.findOne({
+      where: { user_id: userid },
+      include: [
+        {
+          model: UserRole,
+          attributes: ["role"], // adjust to actual column name
+        },
+      ],
+    });
 
-})
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // 🔑 Verify password
+    const matchPassword = await bcrypt.compare(password, user.user_password);
+    if (!matchPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // 🎟️ Generate JWT token
+    const token = generateToken(res, user.user_id);
+
+    // 💾 Save session token
+    await User.update(
+      { session_token: token },
+      { where: { user_id: userid } }
+    );
+
+    // 🌍 Insert into audit table if geolocation provided
+    if (geoLocation?.latitude && geoLocation?.longitude) {
+      await UserAudit.create({
+        user_id: userid,
+        latitude: geoLocation.latitude,
+        longitude: geoLocation.longitude,
+      });
+    }
+
+    // 🎯 Successful response
+    res.json({
+      message: "Authentication Successful",
+      id: user.user_id,
+      email: user.user_email,
+      role: user.UserRole?.role || null,
+      phone: user.user_mobile,
+      termsAccepted: user.terms_accepted,
+    });
+  } catch (error) {
+    console.error("❌ Auth error:", error);
+    res.status(500).json({ error: "Authentication Failed" });
+  }
+});
+
+module.exports = { authUser };
+
+
 
 // @desc Logout user / clear cookie
 // @route POST /api/users/auth
