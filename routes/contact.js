@@ -9,6 +9,7 @@ const { where } = require('sequelize');
 const createContact = asyncHandler(async (req,res) => {
     const {firstName,lastName,email,mobile,message} = req.body
 
+
     try {
     const contact =await Contact.findOne({where:{contact_email:email}})
     if (contact) {
@@ -25,5 +26,5 @@ const createContact = asyncHandler(async (req,res) => {
 
 
 })
-router.post("/",protect,createContact)
+router.post("/",createContact)
 module.exports=router
