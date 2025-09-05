@@ -16,12 +16,13 @@ const cashFreeAPI = require('./routes/cashfree')
 const RazorPay = require('./routes/razorpay')
 const BankCard = require('./routes/bankCard')
 const Contact = require('./routes/contact')
+const Services = require('./routes/services')
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload')
 const logResponse = require('./controllers/logResponse')
 const app = express();
 dotenv.config()
-
+const {sequelize}=require('./models')
 const corsOptions={
   origin:process.env.CORS_ORIGIN ||'*',
   methods:"GET,POST,PUT,DELETE",
@@ -52,6 +53,7 @@ app.use('/api/cashfree',cashFreeAPI)
 app.use('/api/razor',RazorPay)
 app.use('/api/bank',BankCard)
 app.use('/api/contact',Contact)
+app.use('/api/services',Services)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -61,6 +63,20 @@ app.use(notFound)
 app.use(errorHandler)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Database connected successfully.");
+
+    // 👉 If you want Sequelize to auto-sync tables (careful in production!)
+    // await sequelize.sync({ alter: true });
+    // console.log("✅ Database models synced.");
+
+  } catch (error) {
+    console.error("❌ Unable to connect to the database:", error);
+  }
+})();
 
 // error handler
 app.use(function(err, req, res, next) {

@@ -4,7 +4,9 @@ const asyncHandler = require('express-async-handler')
 const protect = require('../config/authMiddleware')
 const db = require('../config/db')
 const { Cashfree, CFEnvironment } =require("cashfree-pg");
-
+const { where } = require('sequelize');
+const {Transaction, Wallet} = require('../models');
+const {User} = require('../models');
 const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `${process.env.SECRET_KEY}`);
 
 const createOrder = asyncHandler(async (req, res) => {
@@ -156,10 +158,66 @@ const orderHistory = asyncHandler(async (req, res) => {
   }
 });
 
+const logTransaction = asyncHandler(async (req,res) => {
+  try {
+    const {userId,type,amount} = req.body
+    const numericAmount = Number(amount);
+
+    if (isNaN(numericAmount)|| numericAmount<=0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const wallet = await Wallet.findOne({where:{wallet_user_id:userId}})
+
+    if (!wallet) {
+      return res.status(500).json({message:"Wallet not found"})
+    }
+    const beforeBalance = Number(wallet.wallet_balance) ||0
+    let afterBalance = beforeBalance
+
+    let credit = 0.00
+    let debit = 0.00
+
+    if (type === "credit") {
+      credit = numericAmount
+      afterBalance += numericAmount
+    } else if (type === "debit") {
+      debit = numericAmount
+      afterBalance -= numericAmount
+
+      if (afterBalance<0) {
+        return res.status(400).json({message:"Insufficient balance"})
+      }
+    }else{
+      return res.status(400).json({message:'Invalid transaction type'})
+    }
+
+    wallet.wallet_balance = afterBalance
+    await wallet.save()
+
+    await Transaction.create({
+      user_id:userId,
+      txn_id:'TXN'+Date.now(),
+      txn_type:type,
+      before_balance:beforeBalance,
+      credit,
+      debit,
+      after_balance:afterBalance,
+      created_timestamp:new Date()
+    })
+    return res.json({message:'Transaction logged successfully',beforeBalance,afterBalance})
+  } catch (err) {
+    console.error("Error in log Transaction",err);
+    return res.status(500).json({message:"Internal Server error"})
+  }
+
+})
+
 
 
 router.post("/",protect,createOrder)
 router.post("/payment-status",protect,paymentStatus)
 router.post('/orders',protect,orderHistory)
+router.post('/passbook',protect,logTransaction)
 
 module.exports = router

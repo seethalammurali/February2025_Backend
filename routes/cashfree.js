@@ -36,7 +36,6 @@ const panVerification = asyncHandler(async(req,res)=>{
             'x-client-secret':process.env.SECURE_ID_SECRET_KEY,
             'Content-Type':'application/json'
         }})
-        console.log(response);
 
         res.json({message:'Successfull',data:response.data})
 
