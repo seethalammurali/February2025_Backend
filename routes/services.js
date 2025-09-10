@@ -34,8 +34,8 @@ transporter.verify((err, success) => {
 
 const forgotPassword = asyncHandler(async(req,res)=>{
     try {
-        const {user_email} = req.body
-        const user = await User.findOne({where:{user_email}})
+        const {userId} = req.body
+        const user = await User.findOne({where:{user_id:userId}})
 
         if (!user ) {
             return res.status(404).json({message:'User not found'})
@@ -49,12 +49,12 @@ const forgotPassword = asyncHandler(async(req,res)=>{
 
     await transporter.sendMail({
       from: process.env.EMAIL,
-      to: user_email,
+      to: user.user_email,
       subject: "Password Reset OTP",
       text: `Your OTP for password reset is: ${otp}`,
     });
 
-    res.json({ message: "OTP sent to your email" });
+    res.status(200).json({ message: "OTP sent to your email" });
 
     } catch (err) {
         console.log(err);
@@ -65,8 +65,8 @@ const forgotPassword = asyncHandler(async(req,res)=>{
 
 const verify = asyncHandler(async (req,res) => {
     try {
-    const { user_email, otp } = req.body;
-    const user = await User.findOne({ where: { user_email } });
+    const { userId, otp } = req.body;
+    const user = await User.findOne({ where: { user_id:userId } });
 
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
@@ -83,8 +83,8 @@ const verify = asyncHandler(async (req,res) => {
 
 const resetPassword = asyncHandler(async (req,res) => {
     try {
-    const { user_email, password } = req.body;
-    const user = await User.findOne({ where: { user_email } });
+    const { userId, password } = req.body;
+    const user = await User.findOne({ where: { user_id:userId } });
     console.log(user);
 
 
@@ -108,7 +108,7 @@ const resetPassword = asyncHandler(async (req,res) => {
 
 })
 
-router.post('/forgot-password',protect,forgotPassword)
-router.post('/verify',protect,verify)
-router.post('/reset-password',protect,resetPassword)
+router.post('/forgot-password',forgotPassword)
+router.post('/verify',verify)
+router.post('/reset-password',resetPassword)
 module.exports=router;

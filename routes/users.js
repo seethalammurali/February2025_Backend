@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs')
 const protect = require('../config/authMiddleware')
 const generateToken = require('../config/generateToken')
 const {encrypt} = require('../middleware/encryption')
-const { User } = require('../models');
+const { User, UserRole, UserAudit } = require('../models');
 
 /* GET users listing. */
 // @desc Register a new user
@@ -94,6 +94,7 @@ const authUser = asyncHandler(async (req, res) => {
     if (geoLocation?.latitude && geoLocation?.longitude) {
       await UserAudit.create({
         user_id: userid,
+        login_time:new Date(),
         latitude: geoLocation.latitude,
         longitude: geoLocation.longitude,
       });
@@ -134,8 +135,6 @@ const logoutUser = ((req,res)=>{
 // @route POST /api/users/auth
 // @access Public
 const getUser = asyncHandler(async(req,res)=>{
-  console.log(req.user);
-
   if (req.user) {
     res.json({
       id: req.user.id,
@@ -152,62 +151,72 @@ const getUser = asyncHandler(async(req,res)=>{
 // @desc Get user profile
 // @route POST /api/users/auth
 // @access Public
-const updateUser = asyncHandler(async(req,res)=>{
-  const {email,password,userid} =req.body
-  const userId=req.user.id
+const updateUser = asyncHandler(async (req, res) => {
   try {
-    const getSql = "select user_id,user_email,user_password from users where user_id=?"
-    const result = await new Promise((resolve, reject) => {
-      db.query(getSql,[userId],(err,result)=>{
-        if (err) reject(err);
-        resolve(result)
-      })
-    })
-    if (result.length ===0) {
-      return res.status(404).json({message:'User not found'})
+    const { email, password, userid } = req.body;
+    const userId = req.user.id; // from auth middleware
+
+    // 🔎 Check if user exists
+    const user = await User.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-    const user=result[0]
+
+    // 📝 Prepare updates
     const updatedUserId = userid || user.user_id;
     const updatedEmail = email || user.user_email;
-    const updatedPassword = password || user.user_password
-    const updatedDate = new Date().toISOString().replace('T', ' ').split('.')[0];
-    let updatedUserPassword = updatedPassword;
+
+    let updatedPassword = user.user_password;
     if (password) {
       const salt = await bcrypt.genSalt(10);
-      updatedUserPassword = await bcrypt.hash(updatedPassword, salt);
+      updatedPassword = await bcrypt.hash(password, salt);
     }
 
-    const updateSql = "UPDATE users SET user_email = ?, user_id = ?, user_password = ?,updated_timestamp= ? WHERE user_id = ?";
+    // ⏱ Update with Sequelize
+    await User.update(
+      {
+        user_email: updatedEmail,
+        user_id: updatedUserId,
+        user_password: updatedPassword,
+        updated_at: new Date(),
+      },
+      { where: { user_id: userId } }
+    );
 
-    await new Promise ((resolve,reject)=>{
-      db.query(updateSql,[updatedEmail,updatedUserId,updatedUserPassword,updatedDate,userId],(err,result)=>{
-        if (err) reject(err)
-        resolve(result)
-      })
-
-    })
-    res.status(200).json({message:'User updated Successfully'})
+    return res.status(200).json({ message: "User updated successfully" });
   } catch (err) {
-    res.status(500).json({message:'Error updating user data'})
+    console.error("Error updating user:", err);
+    return res.status(500).json({ message: "Error updating user data" });
   }
+});
 
 
-})
+const acceptTerms = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-const acceptTerms = asyncHandler(async(req,res)=>{
-  console.log(req.user);
+    // 🔎 Check if user exists
+    const user = await User.findOne({ where: { user_id: userId } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-  const userId = req.user.id
+    // ✅ Update terms_accepted
+    await User.update(
+      { terms_accepted: true, updated_at: new Date() },
+      { where: { user_id: userId } }
+    );
 
-  const sql = `update users set terms_accepted =true where user_id =?`
+    return res.json({ message: "Terms Accepted" });
+  } catch (err) {
+    console.error("Error updating terms:", err);
+    return res.status(500).json({ message: "Failed to update terms status" });
+  }
+});
 
-  db.query(sql,[userId],(err,result)=>{
-    console.log(err);
-
-    if(err) throw new Error("Failed to update terms status");
-    res.json({message:"Terms Accepted"})
-  })
-})
 
 
 router.post('/',registerUser)
