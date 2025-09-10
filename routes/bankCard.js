@@ -2,50 +2,47 @@ const express = require('express');
 const router = express.Router();
 const asyncHandler = require('express-async-handler')
 const protect = require('../config/authMiddleware')
-const db = require('../config/db')
+const db = require('../config/db');
+const { BankDetails, CardDetails } = require('../models');
 
 
-const bankDetails = asyncHandler(async (req,res) => {
-    const {bankName,accountNumber,ifsc,mobile} = req.body
-    console.log(req.body);
+const bankDetails = asyncHandler(async (req, res) => {
+  const { bankName, accountNumber, ifsc, mobile } = req.body;
 
-    const createBankSql = 'insert into bank_details (bank_name,bank_account_number,bank_ifsc_code,bank_mobile_number) values (?,?,?,?)'
-    try {
-        await new Promise((resolve,reject)=>{
-            db.query(createBankSql,[bankName,accountNumber,ifsc,mobile],(err,result)=>{
-            if (err) {
-                console.log(err);                
-                return reject (new Error('Database insertion failed'))
-            }
-            resolve(result)
-            })
-        })    
-        res.status(201).json({message:'Bank details addes  Successfully'})
-    } catch (err) {
-        res.status(500).json({error:err.message|| 'server error'})
-    }
-    
-})
-const cardDetails = asyncHandler(async (req,res) => {
-    const {cardName,cardNumber,bankName,mobile} = req.body
-    console.log(req.body);
+  try {
+    await BankDetails.create({
+      bank_name: bankName,
+      bank_account_number: accountNumber,
+      bank_ifsc_code: ifsc,
+      bank_mobile_number: mobile,
+    });
 
-    const createCardSql = 'insert into card_details (card_name,card_number,card_bank_name,card_mobile_number) values (?,?,?,?)'
-    try {
-        await new Promise((resolve,reject)=>{
-            db.query(createCardSql,[cardName,cardNumber,bankName,mobile],(err,result)=>{
-            if (err) {
-                console.log(err);                
-                return reject (new Error('Database insertion failed'))
-            }
-            resolve(result)
-            })
-        })    
-        res.status(201).json({message:'Card details added  Successfully'})
-    } catch (err) {
-        res.status(500).json({error:err.message|| 'server error'})
-    }
-})
+    res.status(201).json({ message: "Bank details added successfully" });
+  } catch (err) {
+    console.error("Error adding bank details:", err);
+    res.status(500).json({ error: err.message || "Server error" });
+  }
+});
+
+// Add Card Details
+const cardDetails = asyncHandler(async (req, res) => {
+  const { cardName, cardNumber, bankName, mobile } = req.body;
+
+  try {
+    await CardDetails.create({
+      card_name: cardName,
+      card_number: cardNumber,
+      card_bank_name: bankName,
+      card_mobile_number: mobile,
+    });
+
+    res.status(201).json({ message: "Card details added successfully" });
+  } catch (err) {
+    console.error("Error adding card details:", err);
+    res.status(500).json({ error: err.message || "Server error" });
+  }
+});
+
 router.post("/",protect,bankDetails)
 router.post("/card",protect,cardDetails)
 module.exports=router

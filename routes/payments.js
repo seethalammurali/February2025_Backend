@@ -5,7 +5,7 @@ const protect = require('../config/authMiddleware')
 const db = require('../config/db')
 const { Cashfree, CFEnvironment } =require("cashfree-pg");
 const { where } = require('sequelize');
-const {Transaction, Wallet} = require('../models');
+const {Transaction, Wallet, Payments} = require('../models');
 const {User} = require('../models');
 const cashfree = new Cashfree(CFEnvironment.SANDBOX, `${process.env.APP_ID}`, `${process.env.SECRET_KEY}`);
 
@@ -32,27 +32,23 @@ const createOrder = asyncHandler(async (req, res) => {
   try {
     const response = await cashfree.PGCreateOrder(request);
 
-    const createOrderSQL = `
-      INSERT INTO payments (user_id, order_id, amount,customer_name,mobile_number, charges, currency,invoice_id, payment_date)
-      VALUES (?, ?, ?, ?, ?, ?,?,?,?)
-    `;
+    const createOrder = await Payments.create({
+      user_id:customerID,
+      order_id:orderID,
+      amount:amount,
+      customer_name:CustomerName,
+      mobile_number:phone,
+      charges:chargesAmount,
+      currency:process.env.CURRENCY,
+      invoice_id:Invoice,
+      payment_date:new Date()
+    })
 
-    db.query(
-      createOrderSQL,
-      [customerID, orderID, amount,CustomerName,phone, chargesAmount, process.env.CURRENCY,Invoice, new Date()],
-      (err, result) => {
-        if (err) {
-          console.error("DB Insert Error:", err);
-          res.status(400);
-          throw new Error("Failed to insert order into DB");
-        }
-
-        return res.status(201).json({
-          message: "Order Created Successfully",
-          Session_ID: response.data.payment_session_id,
-        });
-      }
-    );
+    return res.status(201).json({
+      message: "Order Created Successfully",
+      Session_ID: response.data.payment_session_id,
+      order:createOrder
+    });
   } catch (error) {
     console.error("Cashfree Error:", error?.response?.data || error.message);
     res.status(400).json({ message: error?.response?.data?.message || "Payment failed" });
@@ -130,30 +126,17 @@ const paymentStatus = asyncHandler(async (req, res) => {
 const orderHistory = asyncHandler(async (req, res) => {
   const { userId } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ message: "User ID is required" });
-  }
-
-  const orderHistorySQL = "SELECT * FROM payments WHERE user_id = ? ORDER BY payment_date DESC";
-
   try {
-    const orders = await new Promise((resolve, reject) => {
-      db.query(orderHistorySQL, [userId], (err, result) => {
-        if (err) {
-          console.error("Database error:", err);
-          return reject(err);
-        }
-        resolve(result);
-
-      });
-    });
-
-    if (orders.length === 0) {
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+    const order = await Payments.findOne({where:{user_id:userId}})
+    if (order.length === 0) {
       return res.status(404).json({ message: "No transactions found" });
     }
-
-    res.status(200).json({  orders });
+    res.status(200).json( [order]);
   } catch (err) {
+
     res.status(500).json({ message: "Failed to fetch transactions" });
   }
 });
