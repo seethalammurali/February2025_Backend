@@ -130,11 +130,12 @@ const orderHistory = asyncHandler(async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
-    const order = await Payments.findOne({where:{user_id:userId}})
+    const order = await Payments.findAll({where:{user_id:userId}})
+
     if (order.length === 0) {
       return res.status(404).json({ message: "No transactions found" });
     }
-    res.status(200).json( [order]);
+    res.status(200).json( order);
   } catch (err) {
 
     res.status(500).json({ message: "Failed to fetch transactions" });
