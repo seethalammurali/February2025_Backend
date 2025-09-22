@@ -9,26 +9,14 @@ const qs = require('qs')
 const encryptAadhar = (aadhar, encryptionKey) => {
   return new Promise((resolve, reject) => {
     try {
-      // Ensure key is exactly 32 bytes (pad or truncate like OpenSSL does)
       let key = Buffer.alloc(32);
       Buffer.from(encryptionKey).copy(key);
-
-      // Generate random IV (16 bytes for AES-256-CBC)
       const iv = crypto.randomBytes(16);
-
-      // Create cipher
       const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-
-      // Encrypt Aadhaar
       let encrypted = cipher.update(aadhar, "utf8", "binary");
       encrypted += cipher.final("binary");
-
-      // Convert to Buffer
       const encryptedBuffer = Buffer.concat([iv, Buffer.from(encrypted, "binary")]);
-
-      // Base64 encode (same as PHP)
       const encryptedData = encryptedBuffer.toString("base64");
-
       resolve(encryptedData);
     } catch (err) {
       reject(err);
@@ -43,14 +31,8 @@ function ref() {
 
 
 const aadharVerification = asyncHandler(async(req,res)=>{
-    console.log(req.body);
     const {aadhar,latitude,longitude} = req.body
     let encryptedaadhar = await encryptAadhar(aadhar,process.env.CLIENT_ENCRYPTIONKEY)
-    console.log('step 0',encryptedaadhar);
-
-    console.log("step 1",process.env.CLIENT_ID,process.env.CLIENT_SECRET,process.env.CLIENT_IP);
-
-
     try {
 
         let data = JSON.stringify({
@@ -59,10 +41,6 @@ const aadharVerification = asyncHandler(async(req,res)=>{
         "longitude": longitude,
         "consent": "Y"
         });
-
-        console.log("step 2",data);
-
-
         let config = {
         method: 'post',
         maxBodyLength: Infinity,
@@ -89,15 +67,7 @@ const aadharVerification = asyncHandler(async(req,res)=>{
 
 
 const panVerification = asyncHandler(async(req,res)=>{
-    console.log(req.body);
     const {pan,latitude,longitude,name,dob} = req.body
-    console.log("step 1", req.body);
-    console.log("step 1.1",  ref());
-
-    console.log("step 2",process.env.CLIENT_ID,process.env.CLIENT_SECRET,process.env.CLIENT_IP);
-
-
-
     try {
             let data =qs.stringify({
             'pan': pan,
@@ -107,9 +77,6 @@ const panVerification = asyncHandler(async(req,res)=>{
             'nameOnCard': name,
             'dateOfBirth': dob
             });
-
-            console.log("step 3",data);
-
 
             let config = {
             method: 'post',
@@ -132,23 +99,16 @@ const panVerification = asyncHandler(async(req,res)=>{
             .catch((err) => {
             console.log(err);
             res.status(500).json({message:"Pan Verification failed",error:err})
-
             });
-
 
     } catch (err) {
         console.error(err);
         res.status(500).json({message:"Pan Verification failed",error:err})
-
     }
   })
 
 const verifyOTP = asyncHandler(async (req,res) => {
     const {otp,otpRef,latitude,longitude} = req.body
-    console.log("step 1",req.body);
-    console.log("step 2",process.env.CLIENT_ID,process.env.CLIENT_SECRET,process.env.CLIENT_IP);
-
-
     let data = JSON.stringify({
     "otp": otp,
     "otpReferenceID": otpRef,
@@ -174,7 +134,6 @@ const verifyOTP = asyncHandler(async (req,res) => {
 
     axios.request(config)
     .then((response) => {
-    console.log(JSON.stringify(response.data));
     res.status(200).json(response.data)
     })
     .catch((err) => {
