@@ -4,6 +4,7 @@ const router = express.Router();
 const crypto = require('crypto')
 const asyncHandler = require('express-async-handler')
 const qs = require('qs')
+const protect = require('../config/authMiddleware');
 
 
 const encryptAadhar = (aadhar, encryptionKey) => {
@@ -134,7 +135,7 @@ const verifyOTP = asyncHandler(async (req,res) => {
 
     axios.request(config)
     .then((response) => {
-    res.status(200).json(response.data)
+    res.status(200).json({data:response.data})
     })
     .catch((err) => {
     console.log(err);
@@ -144,8 +145,8 @@ const verifyOTP = asyncHandler(async (req,res) => {
 
 })
 
-router.post('/verify-aadhar',aadharVerification)
-router.post('/verify-otp',verifyOTP)
-router.post('/verify-pan',panVerification)
+router.post('/verify-aadhar',protect,aadharVerification)
+router.post('/verify-otp',protect,verifyOTP)
+router.post('/verify-pan',protect,panVerification)
 
 module.exports = router;
