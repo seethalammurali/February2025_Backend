@@ -6,14 +6,16 @@ const { where } = require('sequelize');
 
 const protect = asyncHandler(async(req,res,next)=>{
     try {
+
     let token=  req.cookies.jwt;
+
     if (req.headers['postman-token']) {
         console.log("Postman request detected-Skipping session validation");
         return next()
     }
+
     if (!token) {
-        res.status(401)
-        throw new Error("Not Authorized,no token");
+        res.status(401).json({message:"Not authorized, token missing"})
 
     }
         const decoded = jwt.verify(token,process.env.JWT_SECRET)
@@ -24,8 +26,7 @@ const protect = asyncHandler(async(req,res,next)=>{
         })
 
         if (!user) {
-            res.status(401)
-            throw new Error("Not Authorized,user not found");
+            res.status(401).json({message:'Not Authorized,user not found'})
         }
 
         if (user.session_token !==token || !user.session_token) {
@@ -38,8 +39,7 @@ const protect = asyncHandler(async(req,res,next)=>{
           };
         next()
     } catch (error) {
-        res.status(401)
-        throw new Error("Not Authorized,token failed");
+        res.status(401).json({message:error ||"Not Authorized,token failed"})
 
     }
 
