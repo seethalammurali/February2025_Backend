@@ -18,6 +18,7 @@ const BankCard = require('./routes/bankCard')
 const Contact = require('./routes/contact')
 const Services = require('./routes/services')
 const Utilities = require('./routes/bps')
+const GST = require('./routes/gst')
 const bodyParser = require('body-parser');
 const fileUpload = require('express-fileupload')
 const logResponse = require('./controllers/logResponse')
@@ -56,6 +57,7 @@ app.use('/api/bank',BankCard)
 app.use('/api/contact',Contact)
 app.use('/api/services',Services)
 app.use('/api/utilities',Utilities)
+app.use('/api/gst',GST)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
