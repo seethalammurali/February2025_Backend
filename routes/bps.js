@@ -4,6 +4,17 @@ const router = express.Router();
 const asyncHandler = require("express-async-handler");
 const protect = require("../config/authMiddleware");
 
+function generateRandomAlphanumeric(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    result += chars.charAt(randomIndex);
+  }
+  return result;
+}
+
+
 const headers = {
   Accept: "application/json",
   "X-Ipay-Auth-Code": "1",
@@ -34,18 +45,20 @@ const categories = asyncHandler(async (req, res, next) => {
 });
 
 const biller = asyncHandler(async (req, res, next) => {
-  const { categoryKey } = req.body;
+  const { categoryKey,pageNumber,recordPerPage } = req.body;
   try {
       let data = JSON.stringify({
         "pagination": {
-            "pageNumber": 1,
-            "recordsPerPage": 10
+            "pageNumber": pageNumber,
+            "recordsPerPage": recordPerPage
         },
         "filters": {
             "categoryKey": categoryKey,
             "updatedAfterDate": "C04"
         }
         })
+        console.log("step 1",data);
+
         let config = {
             method: "post",
             maxBodyLength: Infinity,
@@ -84,22 +97,62 @@ const billerDetails = asyncHandler(async (req,res,next) => {
     }
 })
 
+const billerEnquiry = asyncHandler(async (req,res,next) => {
+    const {billerId,param1,param2,amount} = req.body;
+    try {
+        let data = JSON.stringify({
+            "billerId": billerId,
+            "initChannel": "AGT",
+            "externalRef": generateRandomAlphanumeric(6),
+            "inputParameters": {
+                "param1": param1,
+                "param2": param2
+            },
+            "deviceInfo": {
+                "mac": "BC-BE-33-65-E6-AC",
+                "ip": "103.254.205.164"
+            },
+            "remarks": {
+                "param1": param2
+            },
+            "transactionAmount": amount
+        });
+
+        let config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://api.instantpay.in/marketplace/utilityPayments/prePaymentEnquiry',
+        headers: headers,
+        data : data
+        };
+        const response = await axios.request(config)
+        res.status(200).json(response.data)
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({message:'Internal Server Error',error:err})
+
+    }
+})
+
 const billPayment = asyncHandler(async (req,res,next) => {
-    const {billerId,externalRef,enquiryReferenceId,telecomCircle,initChannel,terminalId,mobile,postalCode,latitude,longitude,amount} = req.body
+    const {billerId,enquiryReferenceId,latitude,longitude,amount,param1,param2} = req.body
+    console.log("step 20",req.body);
+
     try {
         let data = ({
-            "billerId":billerId,
-            "externalRef":externalRef,
+            "billerId": billerId,
+            "externalRef": "1234567TEST",
             "enquiryReferenceId": enquiryReferenceId,
-            "telecomCircle": telecomCircle,
+            "telecomCircle": "AP",
             "inputParameters": {
-                "param1": mobile
+                "param1": param1,"param2":param2
             },
-            "initChannel": initChannel,
+            "initChannel": "AGT",
             "deviceInfo": {
-                "terminalId": terminalId,
-                "mobile": mobile,
-                "postalCode": postalCode,
+                "terminalId": "128139238",
+                "mobile": param2,
+                "postalCode": "500040",
                 "geoCode": `${latitude},${longitude}`
             },
             "paymentMode": "Cash",
@@ -107,7 +160,7 @@ const billPayment = asyncHandler(async (req,res,next) => {
                 "Remarks": "CashPayment"
             },
             "remarks": {
-                "param1": mobile
+                "param1": param2
             },
             "transactionAmount": amount,
             "customerPan": ""
@@ -125,6 +178,8 @@ const billPayment = asyncHandler(async (req,res,next) => {
         };
 
         const response = await axios.request(config)
+        console.log("step 20",response.data);
+
         res.status(200).json(response.data)
 
     } catch (err) {
@@ -132,9 +187,34 @@ const billPayment = asyncHandler(async (req,res,next) => {
         res.status(500).json({message:"Internal Server Error",error:err})
     }
 })
+
+const txn_status = asyncHandler(async (req,res,next) => {
+    const {date,refId} = req.body
+   try {
+    let data = JSON.stringify({
+            "transactionDate": "2025-10-07",
+            "externalRef": "123TEST"
+        })
+        let config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://api.instantpay.in/reports/txnStatus',
+        headers: headers,
+        data : data
+        };
+        const response = await axios.request(config)
+        res.status(200).json(response.data)
+   } catch (err) {
+     console.error(err);
+    res.status(500).json({message:'Internal Server Error',error:err})
+   }
+
+})
 router.get("/", protect, categories);
 router.post("/biller", protect, biller);
 router.post("/billerDetails", protect, billerDetails);
+router.post("/billerEnquiry", protect, billerEnquiry);
 router.post("/billPayment", protect, billPayment);
+router.post("/txnstatus", protect, txn_status);
 
 module.exports = router;
