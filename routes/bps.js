@@ -142,7 +142,7 @@ const billPayment = asyncHandler(async (req,res,next) => {
     try {
         let data = ({
             "billerId": billerId,
-            "externalRef": "1234567TEST",
+            "externalRef": generateRandomAlphanumeric(10),
             "enquiryReferenceId": enquiryReferenceId,
             "telecomCircle": "AP",
             "inputParameters": {
@@ -155,9 +155,12 @@ const billPayment = asyncHandler(async (req,res,next) => {
                 "postalCode": "500040",
                 "geoCode": `${latitude},${longitude}`
             },
-            "paymentMode": "Cash",
+            "paymentMode": "UPI",
             "paymentInfo": {
-                "Remarks": "CashPayment"
+                "Remarks": "VPA",
+                "WalletName": null,
+                "MobileNo": param2,
+                "VPA": "9051755536@paytm"
             },
             "remarks": {
                 "param1": param2
