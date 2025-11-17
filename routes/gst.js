@@ -24,6 +24,8 @@ const headers = {
   "X-Ipay-Outlet-Id": process.env.CLIENT_OUTLET_ID,
 };
 const gst = asyncHandler(async (req,res,next) => {
+  console.log(req.body);
+
   const {gst,latitude,longitude} = req.body
     try {
         let data =JSON.stringify({
